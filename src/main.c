@@ -19,10 +19,12 @@ typedef struct Png{
 
 
 void printCWinfo();
+void printPngInfo(Png *image);
 void printHelp();
 void read_png_file(char *file_name, struct Png *image);
 void write_png_file(char *file_name, struct Png *image);
 int* getColor(char *color);
+void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
 void setPixel(Png *image, int *color, int x, int y);
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color);
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color);
@@ -35,11 +37,14 @@ int main(){
     char* input_file = "file.png";
     char* output_file = "file2.png";
     Png image;
+    
     read_png_file(input_file, &image);
     char *color = "255.0.0";
     int *arr = getColor(color);
-    drawRectangle(&image, 550, 200, 650, 100, "50", arr, "false", NULL);
+;
+    drawRectangle(&image, 250, 200, 650, 100, "20", arr, "true", getColor("0.255.0"));
     write_png_file(output_file, &image);
+    
 
     return 0;
 
@@ -49,7 +54,44 @@ void printCWinfo(){
     printf("Course work for option 4.15, created by Mark Luchkin.\n");
 }
 
-void printHelp(){}
+void printPngInfo(Png *image){
+    printf("Image Width: %d\n", image->width);
+    printf("Image Height: %d\n", image->height);
+
+    printf("Color Type: ");
+    switch (image->color_type) {
+        case PNG_COLOR_TYPE_GRAY:
+            printf("Grayscale\n");
+            break;
+        case PNG_COLOR_TYPE_RGB:
+            printf("RGB\n");
+            break;
+        case PNG_COLOR_TYPE_PALETTE:
+            printf("Palette\n");
+            break;
+        case PNG_COLOR_TYPE_GRAY_ALPHA:
+            printf("Grayscale with Alpha\n");
+            break;
+        case PNG_COLOR_TYPE_RGBA:
+            printf("RGB with Alpha\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+    }
+
+    printf("Bit Depth: %d\n", image->bit_depth);
+    printf("Number of passes: %d\n", image->number_of_passes);
+
+}
+
+void printHelp(){
+    printf("Course work for option 4.15, created by Mark Luchkin.\n");
+
+    printf("Options:\n");
+    printf("  -h, --help                Display this help message\n");
+    printf("  --info                    Print detailed information about the input PNG file\n");
+}
 
 void read_png_file(char *file_name, struct Png *image){
     int x,y;
@@ -178,11 +220,20 @@ void write_png_file(char *file_name, struct Png *image){
 }
 
 int *getColor(char *color) {
+    if (color[strlen(color) - 1] == '.' || color[0] == '.' || strstr(color, ".") == NULL){
+        printf("Error: not valid color.\n");
+        exit(0);
+    }
     int *arr = malloc(sizeof(int) * 3);
     sscanf(color, "%d.%d.%d", &arr[0], &arr[1], &arr[2]);
+    for (int i = 0; i < 3; i++){
+        if (arr[i] > 255 || 0 > arr[i]){
+            printf("Error: not valid color.\n");
+            exit(0);
+        }
+    }
     return arr;
 }
-
 
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
     int D = 3 - 2 * radius;
@@ -267,8 +318,21 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     drawLine(image, x1, y2, x2, y2, thickness, color);
     drawLine(image, x2, y2, x2, y1, thickness, color);
     drawLine(image, x1, y2, x1, y1, thickness, color);
+
+    int rad = atoi(thickness) / 2;
+    
+
+    if (fill == "true"){
+        for (int x = x1 + 1; x < x2; x++){
+            for (int y = y1 - 1; y > y2; y--){
+                setPixel(image, fill_color, x, y);
+            }
+        }
+    }
 }
 
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){}
 
-void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){}
+void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
+
+}
