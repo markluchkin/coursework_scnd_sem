@@ -42,7 +42,7 @@ int main(){
     char *color = "255.0.0";
     int *arr = getColor(color);
 ;
-    drawRectangle(&image, 250, 200, 650, 100, "20", arr, "true", getColor("0.255.0"));
+    drawRectangle(&image, 250, 200, 650, 100, "20", arr, "a", getColor("0.255.0"));
     write_png_file(output_file, &image);
     
 
@@ -224,14 +224,17 @@ int *getColor(char *color) {
         printf("Error: not valid color.\n");
         exit(0);
     }
+
     int *arr = malloc(sizeof(int) * 3);
     sscanf(color, "%d.%d.%d", &arr[0], &arr[1], &arr[2]);
+
     for (int i = 0; i < 3; i++){
         if (arr[i] > 255 || 0 > arr[i]){
             printf("Error: not valid color.\n");
             exit(0);
         }
     }
+
     return arr;
 }
 
@@ -319,10 +322,7 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     drawLine(image, x2, y2, x2, y1, thickness, color);
     drawLine(image, x1, y2, x1, y1, thickness, color);
 
-    int rad = atoi(thickness) / 2;
-    
-
-    if (fill == "true"){
+    if (fill){
         for (int x = x1 + 1; x < x2; x++){
             for (int y = y1 - 1; y > y2; y--){
                 setPixel(image, fill_color, x, y);
@@ -334,5 +334,16 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){}
 
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
+    int h = image->height;
+    int w = image->width;
+    double ang = atoi(angle) * PI / 180;
 
+    int leftY = h - y1 - 1;
+    int leftX = x1;
+    int rightY = h - y2 - 1;
+    int rightX = x2;
+    int centerX = (leftX + rightX) / 2;
+    int centerY = (leftY + rightY) / 2;
+
+    int black = {0, 0, 0};
 }
