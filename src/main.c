@@ -41,7 +41,7 @@ int main(){
     read_png_file(input_file, &image);
     char *color = "255.0.0";
     int *arr = getColor(color);
-;
+    
     drawRectangle(&image, 250, 200, 650, 100, "20", arr, "a", getColor("0.255.0"));
     write_png_file(output_file, &image);
     
