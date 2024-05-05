@@ -33,6 +33,7 @@ void writePngFile(char *file_name, struct Png *image);
 int *getColor(png_bytep *row_pointers, int x, int y);
 int* parseColor(char *color);
 Area *copyArea(Png *image, int x1, int y1, int x2, int y2);
+void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2);
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
 void setPixel(Png *image, int *color, int x, int y);
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color);
@@ -43,16 +44,18 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
 
 int main(){
     printCWinfo();
-    char* input_file = "file.png";
+    char* input_file = "image.png";
     char* output_file = "file2.png";
     Png image;
     
     readPngFile(input_file, &image);
     char *color = "255.0.0";
     int *arr = parseColor(color);
-    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, NULL, parseColor("0.255.0"));
+    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, "a", parseColor("255.255.255"));
+    //drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
     rotateImage(&image, 100, 200, 200, 100, "90");
     writePngFile(output_file, &image);
+    
     
     return 0;
 
@@ -271,6 +274,7 @@ Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
         x1 = x2;
         x2 = tp;
     }
+
     Area *area = malloc(sizeof(Area));
     if (!area){
         printf("Error: Can not allocate memory for area\n");
@@ -280,7 +284,6 @@ Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
     area->height = abs(y1 - y2 + 1);
     area->width = abs(x2 - x1 + 1);
     area->row_pointers = malloc(sizeof(png_bytep) * area->height);
-    //printf("HERE\n");
     
     if (!area->row_pointers){
         printf("Error: Can not allocate memory for area's row_pointers\n");
@@ -295,8 +298,8 @@ Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
         }
 
     }
-    for (int y = y2; y <= y1; y++){
-        for (int x = x1; x <= x2; x++){
+    for (int y = y2; y < y1; y++){
+        for (int x = x1; x < x2; x++){
             if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
                 area->row_pointers[areaY][areaX * 3 + 0] = 0;
                 area->row_pointers[areaY][areaX * 3 + 1] = 0;
@@ -315,11 +318,46 @@ Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
         areaX = 0;
         areaY++;
     }
-
+    
     areaX = 0;
     areaY = 0;
-
+    
     return area;
+}
+
+void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2){
+    int areaY = 0, areaX = 0;
+
+    if (y1 < y2){
+        int t = y2;
+        y2 = y1;
+        y1 = t;
+    }
+
+    if (x2 < x1){
+        int tp = x1;
+        x1 = x2;
+        x2 = tp;
+    }
+
+    for (int y = y2; y < y1 + area->height - 1; y++) {
+        for (int x = x1; x < x2 + area->width - 1; x++) {
+            //printf("x = %d y = %d areax = %d areay = %d f %d %d\n", x, y, areaX, areaY, area->width, area->height);
+            
+            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
+                continue;
+            }
+
+            if (area->row_pointers[areaY][areaX * 3 + 0] != 0 && area->row_pointers[areaY][areaX * 3 + 1] != 0 && area->row_pointers[areaY][areaX * 3 + 2] != 0) {
+                image->row_pointers[y][x * 3 + 0] = area->row_pointers[areaY][areaX * 3 + 0];
+                image->row_pointers[y][x * 3 + 1] = area->row_pointers[areaY][areaX * 3 + 1];
+                image->row_pointers[y][x * 3 + 2] = area->row_pointers[areaY][areaX * 3 + 2];
+            }
+            areaX++;
+        }
+        areaX = 0;
+        areaY++;
+    }
 }
 
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
@@ -442,5 +480,6 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int centerY = (leftY + rightY) / 2;
     
     Area *area_to_rotate = copyArea(image, x1, y1, x2, y2);
-    
+    printf("h %d w %d\n", area_to_rotate->height, area_to_rotate->width);
+    //pasteArea(image, area_to_rotate, x1, y1, x2, y2);
 }
