@@ -442,11 +442,5 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int centerY = (leftY + rightY) / 2;
     
     Area *area_to_rotate = copyArea(image, x1, y1, x2, y2);
-    // for (int y = 0; y <= area_to_rotate->height; y++){
-    //     for (int x = 0; x <= area_to_rotate->width; y++){
-    //         printf("%d %d %d area---", getColor(area_to_rotate->row_pointers, x, y)[0], getColor(area_to_rotate->row_pointers, x, y)[1], getColor(area_to_rotate->row_pointers, x, y)[2]);
-    //         printf("%d %d %d im ---", getColor(image->row_pointers, x, y)[0], getColor(image->row_pointers, x, y)[1], getColor(image->row_pointers, x, y)[2]);
-    //         printf("%d\n", getColor(area_to_rotate->row_pointers, x, y) == getColor(image->row_pointers, x, y));
-    //     }
-    // }
+    
 }
