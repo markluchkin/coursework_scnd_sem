@@ -5,6 +5,7 @@
 #include <png.h>
 #include <getopt.h>
 #include <unistd.h>
+
 #define PI 3.14159265
 
 typedef struct Png{
@@ -17,13 +18,21 @@ typedef struct Png{
     png_bytep *row_pointers;
 } Png;
 
+typedef struct Area{
+    int height;
+    int width;
+    png_bytep *row_pointers;
+} Area;
+
 
 void printCWinfo();
 void printPngInfo(Png *image);
 void printHelp();
-void read_png_file(char *file_name, struct Png *image);
-void write_png_file(char *file_name, struct Png *image);
-int* getColor(char *color);
+void readPngFile(char *file_name, struct Png *image);
+void writePngFile(char *file_name, struct Png *image);
+int *getColor(png_bytep *row_pointers, int x, int y);
+int* parseColor(char *color);
+Area *copyArea(Png *image, int x1, int y1, int x2, int y2);
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
 void setPixel(Png *image, int *color, int x, int y);
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color);
@@ -38,14 +47,13 @@ int main(){
     char* output_file = "file2.png";
     Png image;
     
-    read_png_file(input_file, &image);
+    readPngFile(input_file, &image);
     char *color = "255.0.0";
-    int *arr = getColor(color);
+    int *arr = parseColor(color);
+    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, NULL, parseColor("0.255.0"));
+    rotateImage(&image, 100, 200, 200, 100, "90");
+    writePngFile(output_file, &image);
     
-    drawRectangle(&image, 250, 200, 650, 100, "20", arr, "a", getColor("0.255.0"));
-    write_png_file(output_file, &image);
-    
-
     return 0;
 
 }
@@ -93,7 +101,7 @@ void printHelp(){
     printf("  --info                    Print detailed information about the input PNG file\n");
 }
 
-void read_png_file(char *file_name, struct Png *image){
+void readPngFile(char *file_name, struct Png *image){
     int x,y;
     char header[8]; 
     
@@ -158,7 +166,7 @@ void read_png_file(char *file_name, struct Png *image){
     
 }
 
-void write_png_file(char *file_name, struct Png *image){
+void writePngFile(char *file_name, struct Png *image){
     int x, y;
     FILE* fp = fopen(file_name, "wb");
     if (!fp){
@@ -219,7 +227,17 @@ void write_png_file(char *file_name, struct Png *image){
 
 }
 
-int *getColor(char *color) {
+int *getColor(png_bytep *row_pointers, int x, int y){
+    int *arr = malloc(sizeof(int) * 3);
+
+    arr[0] = row_pointers[y][x * 3 + 0];
+    arr[1] = row_pointers[y][x * 3 + 1];
+    arr[2] = row_pointers[y][x * 3 + 2];
+
+    return arr;
+}
+
+int *parseColor(char *color) {
     if (color[strlen(color) - 1] == '.' || color[0] == '.' || strstr(color, ".") == NULL){
         printf("Error: not valid color.\n");
         exit(0);
@@ -236,6 +254,72 @@ int *getColor(char *color) {
     }
 
     return arr;
+}
+
+Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
+    
+    int areaY = 0, areaX = 0;
+
+    if (y1 < y2){
+        int t = y2;
+        y2 = y1;
+        y1 = t;
+    }
+
+    if (x2 < x1){
+        int tp = x1;
+        x1 = x2;
+        x2 = tp;
+    }
+    Area *area = malloc(sizeof(Area));
+    if (!area){
+        printf("Error: Can not allocate memory for area\n");
+        exit(0);
+    }
+
+    area->height = abs(y1 - y2 + 1);
+    area->width = abs(x2 - x1 + 1);
+    area->row_pointers = malloc(sizeof(png_bytep) * area->height);
+    //printf("HERE\n");
+    
+    if (!area->row_pointers){
+        printf("Error: Can not allocate memory for area's row_pointers\n");
+        exit(0);
+    }
+
+    for (int y = 0; y < area->height; y++) {
+        area->row_pointers[y] = malloc(sizeof(png_byte) * area->width * 3);
+        if (!area->row_pointers[y]) {
+            printf("Error: Can not allocate memory for area pixel\n");
+            exit(0);
+        }
+
+    }
+    for (int y = y2; y <= y1; y++){
+        for (int x = x1; x <= x2; x++){
+            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
+                area->row_pointers[areaY][areaX * 3 + 0] = 0;
+                area->row_pointers[areaY][areaX * 3 + 1] = 0;
+                area->row_pointers[areaY][areaX * 3 + 2] = 0;
+                
+            } else {
+                //printf("x = %d, y = %d\n", areaX, areaY);
+                area->row_pointers[areaY][areaX * 3 + 0] = image->row_pointers[y][x * 3 + 0];
+                area->row_pointers[areaY][areaX * 3 + 1] = image->row_pointers[y][x * 3 + 1];
+                area->row_pointers[areaY][areaX * 3 + 2] = image->row_pointers[y][x * 3 + 2];
+            }
+
+            areaX++;
+        }
+
+        areaX = 0;
+        areaY++;
+    }
+
+    areaX = 0;
+    areaY = 0;
+
+    return area;
 }
 
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
@@ -262,6 +346,7 @@ void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
         }
     }
 }
+
 void checkThickness(char *thickness){
     int line_thickness = atoi(thickness);
     if (line_thickness <= 0){
@@ -315,8 +400,19 @@ void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *
     }
 }
 
-
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color){
+    if (y1 < y2){
+        int t = y2;
+        y2 = y1;
+        y1 = t;
+    }
+
+    if (x2 < x1){
+        int tp = x1;
+        x1 = x2;
+        x2 = tp;
+    }
+
     drawLine(image, x1, y1, x2, y1, thickness, color);
     drawLine(image, x1, y2, x2, y2, thickness, color);
     drawLine(image, x2, y2, x2, y1, thickness, color);
@@ -344,6 +440,13 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int rightX = x2;
     int centerX = (leftX + rightX) / 2;
     int centerY = (leftY + rightY) / 2;
-
-    int black = {0, 0, 0};
+    
+    Area *area_to_rotate = copyArea(image, x1, y1, x2, y2);
+    // for (int y = 0; y <= area_to_rotate->height; y++){
+    //     for (int x = 0; x <= area_to_rotate->width; y++){
+    //         printf("%d %d %d area---", getColor(area_to_rotate->row_pointers, x, y)[0], getColor(area_to_rotate->row_pointers, x, y)[1], getColor(area_to_rotate->row_pointers, x, y)[2]);
+    //         printf("%d %d %d im ---", getColor(image->row_pointers, x, y)[0], getColor(image->row_pointers, x, y)[1], getColor(image->row_pointers, x, y)[2]);
+    //         printf("%d\n", getColor(area_to_rotate->row_pointers, x, y) == getColor(image->row_pointers, x, y));
+    //     }
+    // }
 }
