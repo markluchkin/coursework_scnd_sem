@@ -298,8 +298,8 @@ Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
         }
 
     }
-    for (int y = y2; y < y1; y++){
-        for (int x = x1; x < x2; x++){
+    for (int y = y2; y <= y1; y++){
+        for (int x = x1; x <= x2; x++){
             if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
                 area->row_pointers[areaY][areaX * 3 + 0] = 0;
                 area->row_pointers[areaY][areaX * 3 + 1] = 0;
@@ -340,8 +340,10 @@ void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2){
         x2 = tp;
     }
 
-    for (int y = y2; y < y1 + area->height - 1; y++) {
-        for (int x = x1; x < x2 + area->width - 1; x++) {
+    for (int y = y2; y <= y1 + area->height - 1; y++) {
+        for (int x = x1; x <= x2 + area->width - 1; x++) {
+            areaX = 0;
+            areaY++;
             //printf("x = %d y = %d areax = %d areay = %d f %d %d\n", x, y, areaX, areaY, area->width, area->height);
             
             if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
@@ -355,8 +357,6 @@ void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2){
             }
             areaX++;
         }
-        areaX = 0;
-        areaY++;
     }
 }
 
