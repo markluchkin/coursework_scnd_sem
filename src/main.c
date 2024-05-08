@@ -18,13 +18,6 @@ typedef struct Png{
     png_bytep *row_pointers;
 } Png;
 
-typedef struct Area{
-    int height;
-    int width;
-    png_bytep *row_pointers;
-} Area;
-
-
 void printCWinfo();
 void printPngInfo(Png *image);
 void printHelp();
@@ -32,8 +25,8 @@ void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
 int *getColor(png_bytep *row_pointers, int x, int y);
 int* parseColor(char *color);
-Area *copyArea(Png *image, int x1, int y1, int x2, int y2);
-void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2);
+Png *copy(Png *image, int x1, int y1, int x2, int y2);
+void paste(Png *image, Png *area, int x0, int y0);
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
 void setPixel(Png *image, int *color, int x, int y);
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color);
@@ -51,7 +44,7 @@ int main(){
     readPngFile(input_file, &image);
     char *color = "255.0.0";
     int *arr = parseColor(color);
-    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, "a", parseColor("255.255.255"));
+    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, "a", parseColor("255.0.255"));
     //drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
     rotateImage(&image, 100, 200, 200, 100, "90");
     writePngFile(output_file, &image);
@@ -153,7 +146,7 @@ void readPngFile(char *file_name, struct Png *image){
 
     image->row_pointers = (png_bytep *) malloc(sizeof(png_bytep) * image->height);
     if (!image->row_pointers) {
-        printf("Error: Can not allocate memory for image->row_pointers\n");
+        printf("Error: Can't allocate memory for image->row_pointers\n");
         exit(0);
     }
 
@@ -259,103 +252,49 @@ int *parseColor(char *color) {
     return arr;
 }
 
-Area *copyArea(Png *image, int x1, int y1, int x2, int y2){
-    
-    int areaY = 0, areaX = 0;
-
-    if (y1 < y2){
-        int t = y2;
-        y2 = y1;
-        y1 = t;
-    }
-
-    if (x2 < x1){
-        int tp = x1;
-        x1 = x2;
-        x2 = tp;
-    }
-
-    Area *area = malloc(sizeof(Area));
-    if (!area){
-        printf("Error: Can not allocate memory for area\n");
+Png *copy(Png *image, int x1, int y1, int x2, int y2){
+    Png *copy_area = malloc(sizeof(Png));
+    if (!copy_area){
+        printf("Error: Can't allocate memory for area\n");
         exit(0);
     }
-
-    area->height = abs(y1 - y2 + 1);
-    area->width = abs(x2 - x1 + 1);
-    area->row_pointers = malloc(sizeof(png_bytep) * area->height);
     
-    if (!area->row_pointers){
-        printf("Error: Can not allocate memory for area's row_pointers\n");
+    copy_area->height = abs(y1 - y2);
+    copy_area->width = abs(x2 - x1);
+    copy_area->row_pointers = malloc(sizeof(png_bytep) * copy_area->height);
+    
+    if (!copy_area->row_pointers){
+        printf("Error: Can't allocate memory for area's row_pointers\n");
         exit(0);
     }
-
-    for (int y = 0; y < area->height; y++) {
-        area->row_pointers[y] = malloc(sizeof(png_byte) * area->width * 3);
-        if (!area->row_pointers[y]) {
-            printf("Error: Can not allocate memory for area pixel\n");
+    
+    for (int y = 0; y < copy_area->height; y++) {
+        copy_area->row_pointers[y] = malloc(sizeof(png_byte) * copy_area->width * 3);
+        if (!copy_area->row_pointers[y]) {
+            printf("Error: Can't allocate memory for area pixel\n");
             exit(0);
         }
 
     }
-    for (int y = y2; y <= y1; y++){
-        for (int x = x1; x <= x2; x++){
-            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
-                area->row_pointers[areaY][areaX * 3 + 0] = 0;
-                area->row_pointers[areaY][areaX * 3 + 1] = 0;
-                area->row_pointers[areaY][areaX * 3 + 2] = 0;
-                
-            } else {
-                //printf("x = %d, y = %d\n", areaX, areaY);
-                area->row_pointers[areaY][areaX * 3 + 0] = image->row_pointers[y][x * 3 + 0];
-                area->row_pointers[areaY][areaX * 3 + 1] = image->row_pointers[y][x * 3 + 1];
-                area->row_pointers[areaY][areaX * 3 + 2] = image->row_pointers[y][x * 3 + 2];
-            }
-
-            areaX++;
+    
+    for (int y = 0; y < copy_area->height; y++){
+        for (int x = 0; x < copy_area->width; x++){
+            copy_area->row_pointers[y][x * 3 + 0] = image->row_pointers[y + y2][(x + x1) * 3 + 0];
+            copy_area->row_pointers[y][x * 3 + 1] = image->row_pointers[y + y2][(x + x1) * 3 + 1];
+            copy_area->row_pointers[y][x * 3 + 2] = image->row_pointers[y + y2][(x + x1) * 3 + 2];
         }
-
-        areaX = 0;
-        areaY++;
     }
-    
-    areaX = 0;
-    areaY = 0;
-    
-    return area;
+
+    return copy_area;
 }
 
-void pasteArea(Png *image,  Area *area, int x1, int y1, int x2, int y2){
-    int areaY = 0, areaX = 0;
-
-    if (y1 < y2){
-        int t = y2;
-        y2 = y1;
-        y1 = t;
-    }
-
-    if (x2 < x1){
-        int tp = x1;
-        x1 = x2;
-        x2 = tp;
-    }
-
-    for (int y = y2; y <= y1 + area->height - 1; y++) {
-        for (int x = x1; x <= x2 + area->width - 1; x++) {
-            areaX = 0;
-            areaY++;
-            //printf("x = %d y = %d areax = %d areay = %d f %d %d\n", x, y, areaX, areaY, area->width, area->height);
-            
-            if (x < 0 || x >= image->width || y < 0 || y >= image->height) {
-                continue;
-            }
-
-            if (area->row_pointers[areaY][areaX * 3 + 0] != 0 && area->row_pointers[areaY][areaX * 3 + 1] != 0 && area->row_pointers[areaY][areaX * 3 + 2] != 0) {
-                image->row_pointers[y][x * 3 + 0] = area->row_pointers[areaY][areaX * 3 + 0];
-                image->row_pointers[y][x * 3 + 1] = area->row_pointers[areaY][areaX * 3 + 1];
-                image->row_pointers[y][x * 3 + 2] = area->row_pointers[areaY][areaX * 3 + 2];
-            }
-            areaX++;
+void paste(Png *image, Png *area, int x0, int y0){
+    printf("%d %d\n", x0, y0);
+    for (int y = 0; y < area->height; y++) {
+        for (int x = 0; x < area->width; x++) {            
+            image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
+            image->row_pointers[y + y0][(x + x0) * 3 + 1] = area->row_pointers[y][x * 3 + 1];
+            image->row_pointers[y + y0][(x + x0) * 3 + 2] = area->row_pointers[y][x * 3 + 2];
         }
     }
 }
@@ -471,15 +410,17 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int h = image->height;
     int w = image->width;
     double ang = atoi(angle) * PI / 180;
+    printf("%f\n", ang);
+    // int leftY = h - y1 - 1;
+    // int leftX = x1;
+    // int rightY = h - y2 - 1;
+    // int rightX = x2;
+    // int centerX = (leftX + rightX) / 2;
+    // int centerY = (leftY + rightY) / 2;
+    printf("x:%d %d y:%d %d\n", x1, x2, y1, y2); 
+    Png *area_to_rotate = copy(image, x1, y1, x2, y2);   
+    //printf("x:%d %d y:%d %d\n", x1, x2, y1, y2); 
+    //printf("h %d w %d\n", area_to_rotate->height, area_to_rotate->width);
+    paste(image, area_to_rotate, x1 + 10, y2 - 10);
 
-    int leftY = h - y1 - 1;
-    int leftX = x1;
-    int rightY = h - y2 - 1;
-    int rightX = x2;
-    int centerX = (leftX + rightX) / 2;
-    int centerY = (leftY + rightY) / 2;
-    
-    Area *area_to_rotate = copyArea(image, x1, y1, x2, y2);
-    printf("h %d w %d\n", area_to_rotate->height, area_to_rotate->width);
-    //pasteArea(image, area_to_rotate, x1, y1, x2, y2);
 }
