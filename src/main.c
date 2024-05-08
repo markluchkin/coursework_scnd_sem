@@ -44,9 +44,9 @@ int main(){
     readPngFile(input_file, &image);
     char *color = "255.0.0";
     int *arr = parseColor(color);
-    //drawRectangle(&image, 100, 200, 200, 100, "1", arr, "a", parseColor("255.0.255"));
+    //drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
     //drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
-    rotateImage(&image, 100, 200, 200, 100, "90");
+    rotateImage(&image, 300, 200, 400, 100, "90");
     writePngFile(output_file, &image);
     
     
@@ -289,7 +289,6 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
 }
 
 void paste(Png *image, Png *area, int x0, int y0){
-    printf("%d %d\n", x0, y0);
     for (int y = 0; y < area->height; y++) {
         for (int x = 0; x < area->width; x++) {            
             image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
@@ -407,20 +406,46 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){}
 
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
+    if (y1 < y2){
+        int t = y2;
+        y2 = y1;
+        y1 = t;
+    }
+
+    if (x2 < x1){
+        int tp = x1;
+        x1 = x2;
+        x2 = tp;
+    }
+
     int h = image->height;
     int w = image->width;
-    double ang = atoi(angle) * PI / 180;
-    printf("%f\n", ang);
-    // int leftY = h - y1 - 1;
-    // int leftX = x1;
-    // int rightY = h - y2 - 1;
-    // int rightX = x2;
-    // int centerX = (leftX + rightX) / 2;
-    // int centerY = (leftY + rightY) / 2;
-    printf("x:%d %d y:%d %d\n", x1, x2, y1, y2); 
+    int i_angle = atoi(angle);
+    double ang = i_angle * PI / 180;
+
+    int leftY = h - y1 - 1;
+    int leftX = x1;
+    int rightY = h - y2 - 1;
+    int rightX = x2;
+    int centerX = (leftX + rightX) / 2;
+    int centerY = (leftY + rightY) / 2;
+    
     Png *area_to_rotate = copy(image, x1, y1, x2, y2);   
-    //printf("x:%d %d y:%d %d\n", x1, x2, y1, y2); 
-    //printf("h %d w %d\n", area_to_rotate->height, area_to_rotate->width);
-    paste(image, area_to_rotate, x1 + 10, y2 - 10);
+    
+    switch (i_angle){
+        case 90:
+
+        break;
+
+        case 180:
+            
+        break;
+
+        case 270:
+
+        break;
+    }
+
+    paste(image, area_to_rotate, x1 - 200, y2);
 
 }
