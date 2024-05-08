@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #define PI 3.14159265
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 typedef struct Png{
     int width, height;
@@ -18,9 +20,27 @@ typedef struct Png{
     png_bytep *row_pointers;
 } Png;
 
+typedef struct Options{
+    char *input_file;
+    char *output_file;
+
+    char* left_up_value;
+    char* right_down_value;
+    char *color_value;
+    char* thickness_value;
+    char *fill_value;
+    char *fill_color;
+    char *pattern_value;
+    char *count_value;
+    char *angle_value;
+
+} Options;
+
+
 void printCWinfo();
 void printPngInfo(Png *image);
 void printHelp();
+Png *createPng(int height, int width);
 void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
 int *getColor(png_bytep *row_pointers, int x, int y);
@@ -95,6 +115,34 @@ void printHelp(){
     printf("Options:\n");
     printf("  -h, --help                Display this help message\n");
     printf("  --info                    Print detailed information about the input PNG file\n");
+}
+
+Png *createPng(int height, int width){
+    Png *png = malloc(sizeof(Png));
+    if (!png){
+        printf("Error: Can't allocate memory for area\n");
+        exit(40);
+    }
+    
+    png->height = height;
+    png->width = width;
+    png->row_pointers = malloc(sizeof(png_bytep) * png->height);
+    
+    if (!png->row_pointers){
+        printf("Error: Can't allocate memory for area's row_pointers\n");
+        exit(40);
+    }
+    
+    for (int y = 0; y < png->height; y++) {
+        png->row_pointers[y] = malloc(sizeof(png_byte) * png->width * 3);
+        if (!png->row_pointers[y]) {
+            printf("Error: Can't allocate memory for area pixel\n");
+            exit(40);
+        }
+
+    }
+
+    return png;
 }
 
 void readPngFile(char *file_name, struct Png *image){
@@ -253,30 +301,8 @@ int *parseColor(char *color) {
 }
 
 Png *copy(Png *image, int x1, int y1, int x2, int y2){
-    Png *copy_area = malloc(sizeof(Png));
-    if (!copy_area){
-        printf("Error: Can't allocate memory for area\n");
-        exit(0);
-    }
-    
-    copy_area->height = abs(y1 - y2);
-    copy_area->width = abs(x2 - x1);
-    copy_area->row_pointers = malloc(sizeof(png_bytep) * copy_area->height);
-    
-    if (!copy_area->row_pointers){
-        printf("Error: Can't allocate memory for area's row_pointers\n");
-        exit(0);
-    }
-    
-    for (int y = 0; y < copy_area->height; y++) {
-        copy_area->row_pointers[y] = malloc(sizeof(png_byte) * copy_area->width * 3);
-        if (!copy_area->row_pointers[y]) {
-            printf("Error: Can't allocate memory for area pixel\n");
-            exit(0);
-        }
-
-    }
-    
+    Png *copy_area = createPng(abs(y1 - y2), abs(x2 - x1));
+        
     for (int y = 0; y < copy_area->height; y++){
         for (int x = 0; x < copy_area->width; x++){
             copy_area->row_pointers[y][x * 3 + 0] = image->row_pointers[y + y2][(x + x1) * 3 + 0];
@@ -339,7 +365,6 @@ void setPixel(Png *image, int *color, int x, int y){
 }
 
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color){
-    checkThickness(thickness);
     int line_thickness = atoi(thickness);
     int dx = abs(x2 - x1);
     int dy = abs(y2 - y1);
@@ -377,6 +402,13 @@ void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *
 }
 
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color){
+    if (image == NULL || color == NULL) {
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+    
+    checkThickness(thickness);
+
     if (y1 < y2){
         int t = y2;
         y2 = y1;
@@ -403,21 +435,30 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     }
 }
 
-void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){}
+void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){
+    if (image == NULL || color == NULL) {
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+
+    if (count <= 0) {
+        printf("Error: Count is less than 1.\n");
+        rexit(44);
+    }
+
+    checkThickness(thickness);
+}
 
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
-    if (y1 < y2){
-        int t = y2;
-        y2 = y1;
-        y1 = t;
-    }
+    if(!image){
+        printf("Error: Null pointer to image.\n");
+        exit(40);
 
-    if (x2 < x1){
-        int tp = x1;
-        x1 = x2;
-        x2 = tp;
     }
-
+    int cr_x0 = MIN(x2, x1);
+    int cr_y0 = MIN(y2, y1);
+    int cr_x1 = MAX(x2, x1);
+    int cr_y1 = MAX(y2, y1);
     int i_angle = atoi(angle);
 
     if (i_angle != 90 && i_angle != 180 && i_angle != 270) {
@@ -429,10 +470,42 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         exit(44);
     }
 
-       
-    Png *area_to_rotate = copy(image, x1, y1, x2, y2);   
-    
+    if (!(0 <= x2 && x2 <= image->width && 0 <= y2 && y2 <= image->height)) {
+        printf("Error: Rotation area is not on image.\n");
+        exit(44);
+    }
 
-    paste(image, area_to_rotate, x1 + 200, y2);
+       
+    Png *area_to_rotate = copy(image, x1, y1, x2, y2); 
+
+    int src_width = area_to_rotate->width;
+    int src_height = area_to_rotate->height;
+    int count = i_angle / 90; 
+    
+    for (int i = 0; i < count; i++){
+        int w, h;
+        if (i % 2 == 0){
+            w = src_height;
+            h = src_width;
+        } else{
+            w = src_width;
+            h = src_height;
+        }
+
+        Png *rotated_area = createPng(h, w);
+        for (int y = 0; y < area_to_rotate->height; ++y) {
+            for (int x = 0; x < area_to_rotate->width; ++x) {
+                int *color = getColor(area_to_rotate->row_pointers, x, y);
+                setPixel(rotated_area, color, y, area_to_rotate->width - 1 - x);
+                free(color);
+            }
+        }
+        area_to_rotate = rotated_area;
+    }
+
+    int paste_x = (cr_x1 + cr_x0) / 2 - area_to_rotate->width / 2;
+    int paste_y = (cr_y1 + cr_y0) / 2 - area_to_rotate->height / 2;
+
+    paste(image, area_to_rotate, paste_x, paste_y);
 
 }
