@@ -418,34 +418,21 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         x2 = tp;
     }
 
-    int h = image->height;
-    int w = image->width;
     int i_angle = atoi(angle);
-    double ang = i_angle * PI / 180;
 
-    int leftY = h - y1 - 1;
-    int leftX = x1;
-    int rightY = h - y2 - 1;
-    int rightX = x2;
-    int centerX = (leftX + rightX) / 2;
-    int centerY = (leftY + rightY) / 2;
-    
-    Png *area_to_rotate = copy(image, x1, y1, x2, y2);   
-    
-    switch (i_angle){
-        case 90:
-
-        break;
-
-        case 180:
-            
-        break;
-
-        case 270:
-
-        break;
+    if (i_angle != 90 && i_angle != 180 && i_angle != 270) {
+        printf("Error: Unexpected angle.\n");
+        exit(44);
+    }
+    if (x2 == x1 || y2 == y1) {
+        printf("Error: Bad rotation area.\n");
+        exit(44);
     }
 
-    paste(image, area_to_rotate, x1 - 200, y2);
+       
+    Png *area_to_rotate = copy(image, x1, y1, x2, y2);   
+    
+
+    paste(image, area_to_rotate, x1 + 200, y2);
 
 }
