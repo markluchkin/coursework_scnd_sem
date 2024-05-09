@@ -48,7 +48,12 @@ int* parseColor(char *color);
 Png *copy(Png *image, int x1, int y1, int x2, int y2);
 void paste(Png *image, Png *area, int x0, int y0);
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
+int checkCoordinates(Png *image, int x, int y);
+void checkThickness(char *thickness);
+int checkInCircle(int x, int y, int x0, int y0, int radius, int thickness);
 void setPixel(Png *image, int *color, int x, int y);
+void drawCircle(Png *image, int x1, int y1, int radius, char *thickness, int *color, char *fill, int *fill_color);
+void drawUCircle(Png *image, int x1, int y1, int radius, int *color);
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color);
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color);
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count);
@@ -66,7 +71,10 @@ int main(){
     int *arr = parseColor(color);
     //drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
     //drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
-    rotateImage(&image, 300, 200, 400, 100, "90");
+    //rotateImage(&image, 300, 200, 400, 100, "90");
+    drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 1);
+    //drawCircle(&image, 400, 150, 50, "10", parseColor("255.0.100"), "true", parseColor("0.150.30"));
+    //drawSimpleCircle(&image, 400, 150, 50, parseColor("255.0.0"));
     writePngFile(output_file, &image);
     
     
@@ -79,6 +87,11 @@ void printCWinfo(){
 }
 
 void printPngInfo(Png *image){
+    if (image == NULL) {
+        printf("Error: Null pointer to image.\n");
+        exit(44);
+    }
+
     printf("Image Width: %d\n", image->width);
     printf("Image Height: %d\n", image->height);
 
@@ -121,7 +134,7 @@ Png *createPng(int height, int width){
     Png *png = malloc(sizeof(Png));
     if (!png){
         printf("Error: Can't allocate memory for area\n");
-        exit(40);
+        exit(44);
     }
     
     png->height = height;
@@ -130,14 +143,14 @@ Png *createPng(int height, int width){
     
     if (!png->row_pointers){
         printf("Error: Can't allocate memory for area's row_pointers\n");
-        exit(40);
+        exit(44);
     }
     
     for (int y = 0; y < png->height; y++) {
         png->row_pointers[y] = malloc(sizeof(png_byte) * png->width * 3);
         if (!png->row_pointers[y]) {
             printf("Error: Can't allocate memory for area pixel\n");
-            exit(40);
+            exit(44);
         }
 
     }
@@ -153,13 +166,13 @@ void readPngFile(char *file_name, struct Png *image){
     if (!fp) {
         printf("Error: can't read file: %s\n", file_name);
         fclose(fp);
-        exit(0);
+        exit(44);
     }
     fread(header, 1, 8, fp);
     if (png_sig_cmp(header, 0, 8)){
         printf("Error: probably, %s is not a png\n", file_name);
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     image->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -179,7 +192,7 @@ void readPngFile(char *file_name, struct Png *image){
     if (setjmp(png_jmpbuf(image->png_ptr))){
         printf("Error: unknown\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     png_init_io(image->png_ptr, fp);
@@ -195,14 +208,14 @@ void readPngFile(char *file_name, struct Png *image){
     image->row_pointers = (png_bytep *) malloc(sizeof(png_bytep) * image->height);
     if (!image->row_pointers) {
         printf("Error: Can't allocate memory for image->row_pointers\n");
-        exit(0);
+        exit(44);
     }
 
     for (y = 0; y < image->height; y++){
         image->row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(image->png_ptr, image->info_ptr));
         if (!image->row_pointers[y]){
             printf("Error: can't allocate memory for pixel");
-            exit(0);
+            exit(44);
         }
     }   
     png_read_image(image->png_ptr, image->row_pointers);
@@ -216,48 +229,48 @@ void writePngFile(char *file_name, struct Png *image){
     if (!fp){
         printf("Error: can't create file: %s\n", file_name);
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     image->png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!image->png_ptr){
         printf("Error: error in png structure\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     image->info_ptr = png_create_info_struct(image->png_ptr);
     if (!image->info_ptr){
         printf("Error: error in png info-structure\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     if (setjmp(png_jmpbuf(image->png_ptr))){
         printf("Error: unknown\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     png_init_io(image->png_ptr, fp);
     if (setjmp(png_jmpbuf(image->png_ptr))){
         printf("Error: unknown\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
     png_set_IHDR(image->png_ptr, image->info_ptr, image->width, image->height, image->bit_depth, image->color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
     png_write_info(image->png_ptr, image->info_ptr);
     if (setjmp(png_jmpbuf(image->png_ptr))){
         printf("Error: unknown\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     png_write_image(image->png_ptr, image->row_pointers);
     if (setjmp(png_jmpbuf(image->png_ptr))){
         printf("Error: unknown\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     png_write_end(image->png_ptr, NULL);
@@ -272,13 +285,13 @@ void writePngFile(char *file_name, struct Png *image){
 }
 
 int *getColor(png_bytep *row_pointers, int x, int y){
-    int *arr = malloc(sizeof(int) * 3);
+    int *color = malloc(sizeof(int) * 3);
 
-    arr[0] = row_pointers[y][x * 3 + 0];
-    arr[1] = row_pointers[y][x * 3 + 1];
-    arr[2] = row_pointers[y][x * 3 + 2];
+    color[0] = row_pointers[y][x * 3 + 0];
+    color[1] = row_pointers[y][x * 3 + 1];
+    color[2] = row_pointers[y][x * 3 + 2];
 
-    return arr;
+    return color;
 }
 
 int *parseColor(char *color) {
@@ -301,6 +314,11 @@ int *parseColor(char *color) {
 }
 
 Png *copy(Png *image, int x1, int y1, int x2, int y2){
+    if (image == NULL) {
+        printf("Error: Null pointer to image.\n");
+        exit(44);
+    }
+    
     Png *copy_area = createPng(abs(y1 - y2), abs(x2 - x1));
         
     for (int y = 0; y < copy_area->height; y++){
@@ -315,6 +333,11 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
 }
 
 void paste(Png *image, Png *area, int x0, int y0){
+    if (image == NULL) {
+        printf("Error: Null pointer to image.\n");
+        exit(44);
+    }
+
     for (int y = 0; y < area->height; y++) {
         for (int x = 0; x < area->width; x++) {            
             image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
@@ -325,7 +348,12 @@ void paste(Png *image, Png *area, int x0, int y0){
 }
 
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
-    int D = 3 - 2 * radius;
+    if (image == NULL || color == NULL) {
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+    
+    int delta = 3 - 2 * radius;
     int x = 0;
     int y = radius;
     while (x <= y) {
@@ -338,30 +366,101 @@ void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
         setPixel(image, color, y+x0, -x+y0);
         setPixel(image, color, x+x0, -y+y0);
 
-        if (D < 0) {
-            D += 4 * x + 6;
+        //D += D < 0 ? 4 * x + 6 : 4 * (x - y--) + 10;
+        
+        if (delta < 0) {
+            delta += 4 * x + 6;
             x++;
         } else {
-            D += 4 * (x - y) + 10;
+            delta += 4 * (x - y) + 10;
             x++;
             y--;
         }
     }
 }
 
+int checkCoordinates(Png *image, int x, int y){
+    return (x >= 0 && x < image->width && y >= 0 && y < image->height);
+}
+
 void checkThickness(char *thickness){
     int line_thickness = atoi(thickness);
     if (line_thickness <= 0){
-        printf("Error: thikness must be a positive integer\n");
-        exit(0);
+        printf("Error: Thikness must be a positive integer\n");
+        exit(44);
     }
     return;
 }
 
+int checkInCircle(int x, int y, int x0, int y0, int radius, int thickness){
+    return (int)((x - x0) * (x - x0) + (y - y0) * (y - y0) <= (radius - thickness / 2) * (radius - thickness / 2));
+}
+
+int checkOnCircleLine(int x, int y, int x0, int y0, int radius, int thickness){
+    int flag1 = (x-x0)*(x-x0) + (y-y0)*(y-y0) <= (radius+thickness/2)*(radius+thickness/2);
+    int flag2 = (x-x0)*(x-x0) + (y-y0)*(y-y0) >= (MAX(0, radius-thickness/2))*(MAX(0, radius-thickness/2));
+    return flag1 && flag2;
+}
+
 void setPixel(Png *image, int *color, int x, int y){
+    if (image == NULL || color == NULL) {
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+
+    if (!checkCoordinates(image, x, y)){
+        return;
+    }
+
     image->row_pointers[y][x * 3 + 0] = color[0];
     image->row_pointers[y][x * 3 + 1] = color[1];
     image->row_pointers[y][x * 3 + 2] = color[2];
+}
+
+void drawCircle(Png *image, int x1, int y1, int radius, char *thickness, int *color, char *fill, int *fill_color){
+    if (image == NULL || color == NULL){
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+
+    checkThickness(thickness);
+    int circle_thickness = atoi(thickness);
+    int w = image->width;
+    int h = image->height;
+    for (int y = MAX(0, y1 - radius - circle_thickness/2); y <= MIN(h - 1, y1 + radius + circle_thickness/2); y++){
+        for (int x = MAX(0, x1 - radius - circle_thickness/2); x <= MIN(w - 1, x1 + radius + circle_thickness/2); x++){
+            if (fill && checkInCircle(x, y, x1, y1, radius, circle_thickness)){
+                setPixel(image, fill_color, x, y);
+            } 
+
+            if (checkOnCircleLine(x, y, x1, y1, radius, circle_thickness)){
+                setPixel(image, color, x, y);
+            }
+
+        }
+    }
+
+    drawSimpleCircle(image, x1, y1, radius - circle_thickness/2, color );
+    drawSimpleCircle(image, x1, y1, radius + circle_thickness/2, color );
+}
+
+void drawUCircle(Png *image, int x1, int y1, int radius, int *color){
+    if (image == NULL || color == NULL){
+        printf("Error: Null pointer to image or color.\n");
+        exit(44);
+    }
+
+    int w = image->width;
+    int h = image->height;
+    for (int y = 0; y <= h; y++){
+        for (int x = 0; x <= w; x++){
+            if (!checkOnCircleLine(x, y, x1, y1, radius, 1) && !checkInCircle(x, y, x1, y1, radius, 1)){
+                setPixel(image, color, x, y);
+            }
+        }
+    }
+
+    drawSimpleCircle(image, x1, y1, radius, color);
 }
 
 void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color){
@@ -443,18 +542,56 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
 
     if (count <= 0) {
         printf("Error: Count is less than 1.\n");
-        rexit(44);
+        exit(44);
     }
 
     checkThickness(thickness);
+    int i_thickness = atoi(thickness);
+    int w = image->width;
+    int h = image->height;
+
+    if (strcmp(pattern, "rectangle") == 0){
+        int x0, y0, x1, y1;
+        for (int i = 1; i <= count; ++i){
+            x0 = (i - 1) * 2 * i_thickness;
+            y0 = x0;
+            x1 = w - x0 - 1;
+            y1 = h - y0 - 1;
+
+            if (x0 <= x1 && y0 <= y1){
+                drawRectangle(image, x0, y0, x1, y1, "1", color, NULL, NULL);
+                drawRectangle(image, x0 + i_thickness - 1, y0 + i_thickness - 1, x1 - i_thickness + 1, y1 - i_thickness + 1, "1", color, NULL, NULL);
+
+            }
+        }
+
+    } else if (strcmp(pattern, "circle") == 0){
+        int radius = MIN(w, h) / 2 - 1;
+        drawUCircle(image, w / 2, h / 2, radius, color);
+        
+    } else if (strcmp(pattern, "semicircles")){
+        int h_radius = h / (2 * count);
+        int w_radius = w / (2 * count);
+        int x = w_radius, y = h_radius;
+        for (int i = 0; i < count; i++){
+            drawCircle(image, x, 0, w_radius, thickness, color, NULL, NULL);
+            drawCircle(image, x, h, w_radius, thickness, color, NULL, NULL);
+            x += 2 * w_radius;
+        }
+        for (int j = 0; j < count; j++){
+            drawCircle(image, 0, y, h_radius, thickness, color, NULL, NULL);
+            drawCircle(image, w, y, h_radius, thickness, color, NULL, NULL);
+            y += 2 * h_radius;
+        }
+    }
 }
 
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     if(!image){
         printf("Error: Null pointer to image.\n");
         exit(40);
-
     }
+
     int cr_x0 = MIN(x2, x1);
     int cr_y0 = MIN(y2, y1);
     int cr_x1 = MAX(x2, x1);
@@ -474,7 +611,6 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         printf("Error: Rotation area is not on image.\n");
         exit(44);
     }
-
        
     Png *area_to_rotate = copy(image, x1, y1, x2, y2); 
 
@@ -500,6 +636,7 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
                 free(color);
             }
         }
+
         area_to_rotate = rotated_area;
     }
 
@@ -507,5 +644,4 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int paste_y = (cr_y1 + cr_y0) / 2 - area_to_rotate->height / 2;
 
     paste(image, area_to_rotate, paste_x, paste_y);
-
 }
