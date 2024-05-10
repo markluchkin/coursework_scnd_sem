@@ -51,6 +51,7 @@ void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
 int checkCoordinates(Png *image, int x, int y);
 void checkThickness(char *thickness);
 int checkInCircle(int x, int y, int x0, int y0, int radius, int thickness);
+int checkOnCircleLine(int x, int y, int x0, int y0, int radius, int thickness);
 void setPixel(Png *image, int *color, int x, int y);
 void drawCircle(Png *image, int x1, int y1, int radius, char *thickness, int *color, char *fill, int *fill_color);
 void drawUCircle(Png *image, int x1, int y1, int radius, int *color);
@@ -69,12 +70,13 @@ int main(){
     readPngFile(input_file, &image);
     char *color = "255.0.0";
     int *arr = parseColor(color);
-    //drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
-    //drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
+    // drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
+    // drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
     //rotateImage(&image, 300, 200, 400, 100, "90");
-    drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 1);
-    //drawCircle(&image, 400, 150, 50, "10", parseColor("255.0.100"), "true", parseColor("0.150.30"));
-    //drawSimpleCircle(&image, 400, 150, 50, parseColor("255.0.0"));
+    //drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
+    //drawOrnament(&image, "circle", parseColor("255.0.255"), "5", 7);
+    drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 7);
+    
     writePngFile(output_file, &image);
     
     
@@ -569,7 +571,7 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
         int radius = MIN(w, h) / 2 - 1;
         drawUCircle(image, w / 2, h / 2, radius, color);
         
-    } else if (strcmp(pattern, "semicircles")){
+    } else if (strcmp(pattern, "semicircles") == 0){
         int h_radius = h / (2 * count);
         int w_radius = w / (2 * count);
         int x = w_radius, y = h_radius;
