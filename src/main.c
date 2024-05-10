@@ -21,7 +21,11 @@ typedef struct Png{
 typedef struct Options{
     char *input_file;
     char *output_file;
+
     int help;
+    int flag_info;
+    int flag_input;
+    int flag_output;
     int flag_rect;
     int flag_ornament;
     int flag_rotate;
@@ -34,8 +38,9 @@ typedef struct Options{
     int flag_pattern;
     int flag_count;
     int flag_angle;
-    char* left_up_value;
-    char* right_down_value;
+
+    char *left_up_value;
+    char *right_down_value;
     char *color_value;
     char *thickness_value;
     char *fill_value;
@@ -323,7 +328,7 @@ void writePngFile(char *file_name, struct Png *image){
 void processArguments(int argc, char *argv[], Options *options){
     opterr = 0;
     const char *short_options = "hi:o:";
-    const struct options long_options[] = {
+    const struct option long_options[] = {
         {"help", no_argument, NULL, 'h'},
         {"input", required_argument, NULL, 'i'},
         {"output", required_argument, NULL, 'o'},
@@ -339,8 +344,140 @@ void processArguments(int argc, char *argv[], Options *options){
         {"count", required_argument, NULL, 265},
         {"rotate", no_argument, NULL, 266},
         {"angle", required_argument, NULL, 267},
+        {"info", no_argument, NULL, 268},
         {NULL, 0, NULL, 0}
     };
+    int result = 0;
+    while((result = getopt_long(argc, argv, short_options, long_options, NULL)) != -1){
+        switch (result)
+        {
+        case 'h':
+            options->help = 1;
+            break;
+        
+        case 'i':
+            options->input_file = optarg;
+            options->flag_input = 1;
+            break;
+
+        case 'o':
+            options->output_file = optarg;
+            options->flag_output = 1;
+            break;
+
+        case 256:
+            if (options->flag_ornament || options->flag_rotate || options->flag_info){
+                printf("Error: Can't use more than one function at the same time.\n");
+                exit(44);
+            }
+            options->flag_rect = 1;
+            break;
+
+        case 257:
+            options->left_up_value = optarg;
+            options->flag_left_up = 1;
+            break;
+
+        case 258:
+            options->right_down_value = optarg;
+            options->flag_right_down = 1;
+            break;
+        
+        case 259:
+            options->thickness_value = optarg;
+            options->flag_thickness = 1;
+            break;
+
+        case 260:
+            options->color_value = optarg;
+            options->flag_color = 1;
+            break;
+
+        case 261:
+            options->flag_fill = 1;
+            break;
+
+        case 262:
+            options->fill_color_value = optarg;
+            options->flag_fill_color = 1;
+            break;
+
+        case 263:
+            if (options->flag_rect || options->flag_rotate || options->flag_info){
+                printf("Error: Can't use more than one function at the same time.\n");
+                exit(44);
+            }
+            options->flag_ornament = 1;
+            break;
+
+        case 264:
+            options->pattern_value = optarg;
+            options->flag_pattern = 1;
+            break;
+
+        case 265:
+            options->count_value = optarg;
+            options->flag_count = 1;
+            break;
+
+        case 266:
+            if (options->flag_ornament || options->flag_rect || options->flag_info){
+                printf("Error: Can't use more than one function at the same time.\n");
+                exit(44);
+            }
+            options->flag_rotate = 1;
+            break;
+
+        case 267:
+            options->angle_value = optarg;
+            options->flag_angle = 1;
+            break;
+
+        case 268:
+            if (options->flag_ornament || options->flag_rect || options->flag_rotate){
+                printf("Error: Can't use more than one function at the same time.\n");
+                exit(44);
+            }
+            options->flag_info = 1;
+
+
+        default:
+            printf("Error: Unknown option or missing argument\n");
+            exit(44);
+            break;
+        }
+    }
+
+    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate) {
+        printf("Error: No function selected.\n");
+        exit(44);
+    }
+
+    if (options->help){
+        printHelp();
+        exit(44);
+    }
+
+    if (options->flag_rect && (!options->flag_left_up || !options->flag_right_down || !options->flag_left_up || !options->flag_thickness || !options->flag_color)){
+        printf("Error: Missing required argument.\n");
+        // check fill later
+        exit(44);
+    }
+
+    if (options->flag_ornament && (!options->flag_pattern || !options->flag_color)){
+        printf("Error: Missing required argument.\n");
+        exit(44);
+    }
+    
+    if (options->flag_ornament && (options->pattern_value == "rectangle" || options->pattern_value == "semicircles") && (!options->flag_count || !options->flag_thickness)){
+        printf("Error: Missing required argument.\n");
+        exit(44);
+    }
+
+    if (options->flag_rotate && (!options->flag_angle || !options->flag_left_up || !options->flag_right_down)){
+        printf("Error: Missing required argument.\n");
+        exit(44);
+    }
 }
 
 int *getColor(png_bytep *row_pointers, int x, int y){
