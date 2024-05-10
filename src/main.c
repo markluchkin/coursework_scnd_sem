@@ -469,13 +469,24 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
     
-    if (options->flag_ornament && (options->pattern_value == "rectangle" || options->pattern_value == "semicircles") && (!options->flag_count || !options->flag_thickness)){
+    if (options->flag_ornament && ((strcmp("rectangle", options->pattern_value) == 0 || strcmp("semicircles", options->pattern_value) == 0) && (!options->flag_count || !options->flag_thickness))){
         printf("Error: Missing required argument.\n");
         exit(44);
     }
 
+    if (options->flag_ornament && strcmp("circle", options->pattern_value) == 0){
+        options->thickness_value = "1";
+        options->count_value = "1";
+    }
+
     if (options->flag_rotate && (!options->flag_angle || !options->flag_left_up || !options->flag_right_down)){
         printf("Error: Missing required argument.\n");
+        exit(44);
+    }
+
+
+    if (strcmp(options->input_file, options->output_file) == 0) {
+        printf("Error: Input and output files can't have the same name.\n");
         exit(44);
     }
 }
