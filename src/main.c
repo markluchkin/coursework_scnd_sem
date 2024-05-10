@@ -27,7 +27,7 @@ typedef struct Options{
     char* left_up_value;
     char* right_down_value;
     char *color_value;
-    char* thickness_value;
+    char *thickness_value;
     char *fill_value;
     char *fill_color;
     char *pattern_value;
@@ -44,7 +44,8 @@ Png *createPng(int height, int width);
 void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
 int *getColor(png_bytep *row_pointers, int x, int y);
-int* parseColor(char *color);
+int *parseColor(char *color);
+int *parseCoordinates(char *left_up, char *right_down);
 Png *copy(Png *image, int x1, int y1, int x2, int y2);
 void paste(Png *image, Png *area, int x0, int y0);
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color);
@@ -76,7 +77,10 @@ int main(){
     drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "circle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 7);
-    
+    int *coords = parseCoordinates("300.200","400.100");
+    for (int i = 0; i < 4; i++){
+        printf("%d\n", coords[i]);
+    }
     writePngFile(output_file, &image);
     
     
@@ -181,14 +185,14 @@ void readPngFile(char *file_name, struct Png *image){
     if (!image->png_ptr){
         printf("Error: error in png structure\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     image->info_ptr = png_create_info_struct(image->png_ptr);
     if (!image->info_ptr){
         printf("Error: error in png info-structure\n");
         fclose(fp);
-        exit(0);
+        exit(44);
     }
 
     if (setjmp(png_jmpbuf(image->png_ptr))){
@@ -298,8 +302,8 @@ int *getColor(png_bytep *row_pointers, int x, int y){
 
 int *parseColor(char *color) {
     if (color[strlen(color) - 1] == '.' || color[0] == '.' || strstr(color, ".") == NULL){
-        printf("Error: not valid color.\n");
-        exit(0);
+        printf("Error: Not valid color.\n");
+        exit(44);
     }
 
     int *arr = malloc(sizeof(int) * 3);
@@ -307,10 +311,22 @@ int *parseColor(char *color) {
 
     for (int i = 0; i < 3; i++){
         if (arr[i] > 255 || 0 > arr[i]){
-            printf("Error: not valid color.\n");
-            exit(0);
+            printf("Error: Not valid color.\n");
+            exit(44);
         }
     }
+
+    return arr;
+}
+
+int *parseCoordinates(char *left_up, char *right_down){
+    int *arr = malloc(sizeof(int) * 4);
+    if (!arr) {
+        printf("Error: Can't allocate memory for coordinates.\n");
+        exit(44);
+    }
+    sscanf(left_up, "%d.%d", &arr[0], &arr[1]);
+    sscanf(right_down, "%d.%d", &arr[2], &arr[3]);
 
     return arr;
 }
