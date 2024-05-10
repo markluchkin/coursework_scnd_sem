@@ -4,9 +4,7 @@
 #include <math.h>
 #include <png.h>
 #include <getopt.h>
-#include <unistd.h>
 
-#define PI 3.14159265
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -23,13 +21,25 @@ typedef struct Png{
 typedef struct Options{
     char *input_file;
     char *output_file;
-
+    int help;
+    int flag_rect;
+    int flag_ornament;
+    int flag_rotate;
+    int flag_left_up; 
+    int flag_right_down; 
+    int flag_color; 
+    int flag_thickness; 
+    int flag_fill;
+    int flag_fill_color;
+    int flag_pattern;
+    int flag_count;
+    int flag_angle;
     char* left_up_value;
     char* right_down_value;
     char *color_value;
     char *thickness_value;
     char *fill_value;
-    char *fill_color;
+    char *fill_color_value;
     char *pattern_value;
     char *count_value;
     char *angle_value;
@@ -43,6 +53,7 @@ void printHelp();
 Png *createPng(int height, int width);
 void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
+void processArguments(int argc, char *argv[], Options *options);
 int *getColor(png_bytep *row_pointers, int x, int y);
 int *parseColor(char *color);
 int *parseCoordinates(char *left_up, char *right_down);
@@ -77,10 +88,7 @@ int main(){
     drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "circle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 7);
-    int *coords = parseCoordinates("300.200","400.100");
-    for (int i = 0; i < 4; i++){
-        printf("%d\n", coords[i]);
-    }
+    //printHelp();
     writePngFile(output_file, &image);
     
     
@@ -128,12 +136,34 @@ void printPngInfo(Png *image){
 
 }
 
-void printHelp(){
-    printf("Course work for option 4.15, created by Mark Luchkin.\n");
-
+void printHelp() {
+    printCWinfo();
     printf("Options:\n");
     printf("  -h, --help                Display this help message\n");
     printf("  --info                    Print detailed information about the input PNG file\n");
+    printf("Functions for processing images:\n");
+
+    printf("  Drawing a rectangle:\n");
+    printf("    --rect                  Draw a rectangle\n");
+    printf("    --left_up               Coordinate of the top-left corner (format: x.y)\n");
+    printf("    --right_down            Coordinate of the bottom-right corner (format: x.y)\n");
+    printf("    --thickness             Line thickness\n");
+    printf("    --color                 Line color (format: rrr.ggg.bbb)\n");
+    printf("    --fill                  Optional flag for filling the rectangle (true/false)\n");
+    printf("    --fill_color            Fill color (format: rrr.ggg.bbb)\n\n");
+
+    printf("  Creating an ornament frame:\n");
+    printf("    --ornament              Create an ornament frame\n");
+    printf("    --pattern               Pattern type (rectangle, circle, semicircles, or custom)\n");
+    printf("    --color                 Line color (format: rrr.ggg.bbb)\n");
+    printf("    --thickness             Line thickness\n");
+    printf("    --count                 Number of patterns\n\n");
+
+    printf("  Rotating part of the image:\n");
+    printf("    --rotate                Rotate part of the image\n");
+    printf("    --left_up               Coordinate of the top-left corner of the area (format: x.y)\n");
+    printf("    --right_down            Coordinate of the bottom-right corner of the area (format: x.y)\n");
+    printf("    --angle                 Angle of rotation (90, 180, 270)\n");
 }
 
 Png *createPng(int height, int width){
@@ -290,6 +320,29 @@ void writePngFile(char *file_name, struct Png *image){
 
 }
 
+void processArguments(int argc, char *argv[], Options *options){
+    opterr = 0;
+    const char *short_options = "hi:o:";
+    const struct options long_options[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"input", required_argument, NULL, 'i'},
+        {"output", required_argument, NULL, 'o'},
+        {"rect", no_argument, NULL, 256},
+        {"left_up", required_argument, NULL, 257},
+        {"right_down", required_argument, NULL, 258},
+        {"thickness", required_argument, NULL, 259},
+        {"color", required_argument, NULL, 260},
+        {"fill", no_argument, NULL, 261},
+        {"fill_color", required_argument, NULL, 262},
+        {"ornament", no_argument, NULL, 263},
+        {"pattern", required_argument, NULL, 264},
+        {"count", required_argument, NULL, 265},
+        {"rotate", no_argument, NULL, 266},
+        {"angle", required_argument, NULL, 267},
+        {NULL, 0, NULL, 0}
+    };
+}
+
 int *getColor(png_bytep *row_pointers, int x, int y){
     int *color = malloc(sizeof(int) * 3);
 
@@ -327,7 +380,7 @@ int *parseCoordinates(char *left_up, char *right_down){
     }
     sscanf(left_up, "%d.%d", &arr[0], &arr[1]);
     sscanf(right_down, "%d.%d", &arr[2], &arr[3]);
-
+    /* x1 y1 x2 y2 format */ 
     return arr;
 }
 
