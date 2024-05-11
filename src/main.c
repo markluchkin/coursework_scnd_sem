@@ -59,6 +59,7 @@ Png *createPng(int height, int width);
 void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
 void processArguments(int argc, char *argv[], Options *options);
+void process(Options *options, Png *image);
 int *getColor(png_bytep *row_pointers, int x, int y);
 int *parseColor(char *color);
 int *parseCoordinates(char *left_up, char *right_down);
@@ -78,25 +79,31 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
 
 
-int main(){
-    printCWinfo();
-    char* input_file = "image.png";
-    char* output_file = "file2.png";
-    Png image;
-    
-    readPngFile(input_file, &image);
+int main(int argc, char *argv[]){
+    //printCWinfo();
+    //char* input_file = "image.png";
+    //char* output_file = "file2.png";    
+    //readPngFile(input_file, &image);
     char *color = "255.0.0";
     int *arr = parseColor(color);
     // drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
     // drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
     //rotateImage(&image, 300, 200, 400, 100, "90");
-    drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
+    //drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "circle", parseColor("255.0.255"), "5", 7);
     //drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 7);
     //printHelp();
-    writePngFile(output_file, &image);
+    //writePngFile(output_file, &image);
+    Png image;
+    Options options = {};
+    options.output_file = "out.png";
+    processArguments(argc, argv, &options);
+
+    readPngFile(options.input_file, &image);
     
-    
+    process(&options, &image);
+
+    writePngFile(options.output_file, &image);
     return 0;
 
 }
@@ -448,6 +455,11 @@ void processArguments(int argc, char *argv[], Options *options){
         }
     }
 
+    if (strcmp(options->input_file, options->output_file) == 0) {
+        printf("Error: Input and output files can't have the same name.\n");
+        exit(44);
+    }
+
     if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate) {
         printf("Error: No function selected.\n");
         exit(44);
@@ -460,7 +472,11 @@ void processArguments(int argc, char *argv[], Options *options){
 
     if (options->flag_rect && (!options->flag_left_up || !options->flag_right_down || !options->flag_left_up || !options->flag_thickness || !options->flag_color)){
         printf("Error: Missing required argument.\n");
-        // check fill later
+        exit(44);
+    }
+
+    if (options->flag_fill && !options->flag_fill_color){
+        printf("Error: Missing required argument.\n");
         exit(44);
     }
 
@@ -484,9 +500,34 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
 
+}
 
-    if (strcmp(options->input_file, options->output_file) == 0) {
-        printf("Error: Input and output files can't have the same name.\n");
+void process(Options *options, Png *image){
+    if (options->flag_info){
+        printPngInfo(image);
+        exit(44);
+    }
+
+    if (options->flag_rect){
+        int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
+        if (!options->flag_fill || !options->flag_fill_color){
+            drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), NULL, NULL);
+            exit(44);
+        }
+        else{
+            drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), "fill", parseColor(options->fill_color_value));
+            exit(44);
+        }
+    }
+
+    if (options->flag_ornament){
+        drawOrnament(image, options->pattern_value, parseColor(options->color_value), options->thickness_value, atoi(options->count_value));
+        exit(44);
+    }
+
+    if (options->flag_rotate){
+        int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
+        rotateImage(image, coords[0], coords[1], coords[2], coords[3], options->angle_value);
         exit(44);
     }
 }
