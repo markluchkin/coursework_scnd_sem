@@ -80,30 +80,18 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
 
 
 int main(int argc, char *argv[]){
-    //printCWinfo();
-    //char* input_file = "image.png";
-    //char* output_file = "file2.png";    
-    //readPngFile(input_file, &image);
-    char *color = "255.0.0";
-    int *arr = parseColor(color);
-    // drawRectangle(&image, 300, 200, 400, 100, "1", arr, "a", parseColor("255.0.255"));
-    // drawRectangle(&image, 600, 200, 700, 100, "1", arr, NULL, parseColor("0.255.0"));
-    //rotateImage(&image, 300, 200, 400, 100, "90");
-    //drawOrnament(&image, "rectangle", parseColor("255.0.255"), "5", 7);
-    //drawOrnament(&image, "circle", parseColor("255.0.255"), "5", 7);
-    //drawOrnament(&image, "semicircles", parseColor("255.0.255"), "1", 7);
-    //printHelp();
-    //writePngFile(output_file, &image);
     Png image;
-    Options options = {};
+    
+    Options options = {NULL};
     options.output_file = "out.png";
     processArguments(argc, argv, &options);
-
+    
     readPngFile(options.input_file, &image);
     
     process(&options, &image);
-
+    
     writePngFile(options.output_file, &image);
+    
     return 0;
 
 }
@@ -153,6 +141,8 @@ void printHelp() {
     printf("Options:\n");
     printf("  -h, --help                Display this help message\n");
     printf("  --info                    Print detailed information about the input PNG file\n");
+    printf("  --input                   Input file name");
+    printf("  --output                  Output file name");
     printf("Functions for processing images:\n");
 
     printf("  Drawing a rectangle:\n");
@@ -212,33 +202,33 @@ void readPngFile(char *file_name, struct Png *image){
     
     FILE *fp = fopen(file_name, "rb");
     if (!fp) {
-        printf("Error: can't read file: %s\n", file_name);
+        printf("Error: Can't read file: %s\n", file_name);
         fclose(fp);
         exit(44);
     }
     fread(header, 1, 8, fp);
     if (png_sig_cmp(header, 0, 8)){
-        printf("Error: probably, %s is not a png\n", file_name);
+        printf("Error: Probably, %s is not a png\n", file_name);
         fclose(fp);
         exit(44);
     }
 
     image->png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!image->png_ptr){
-        printf("Error: error in png structure\n");
+        printf("Error: Error in png structure\n");
         fclose(fp);
         exit(44);
     }
 
     image->info_ptr = png_create_info_struct(image->png_ptr);
     if (!image->info_ptr){
-        printf("Error: error in png info-structure\n");
+        printf("Error: Error in png info-structure\n");
         fclose(fp);
         exit(44);
     }
 
     if (setjmp(png_jmpbuf(image->png_ptr))){
-        printf("Error: unknown\n");
+        printf("Error: Unknown\n");
         fclose(fp);
         exit(44);
     }
@@ -272,64 +262,67 @@ void readPngFile(char *file_name, struct Png *image){
 }
 
 void writePngFile(char *file_name, struct Png *image){
-    int x, y;
-    FILE* fp = fopen(file_name, "wb");
-    if (!fp){
-        printf("Error: can't create file: %s\n", file_name);
-        fclose(fp);
+    FILE *fout = fopen(file_name, "wb");
+    if (!fout){
+        printf("Error: File could not be opened.");
         exit(44);
     }
 
-    image->png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!image->png_ptr){
-        printf("Error: error in png structure\n");
-        fclose(fp);
+    png_structp png_ptr_ = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+    if (!png_ptr_){
+        printf("Error: png_create_write_struct failed.");
         exit(44);
     }
 
-    image->info_ptr = png_create_info_struct(image->png_ptr);
-    if (!image->info_ptr){
-        printf("Error: error in png info-structure\n");
-        fclose(fp);
+    png_infop info_ptr_ = png_create_info_struct(png_ptr_);
+    if (!info_ptr_) {
+        png_destroy_info_struct(png_ptr_, (png_infopp)NULL);
+        fclose(fout);
+        printf("Error: (info_ptr) png_create_info_struct failed.");
         exit(44);
     }
 
-    if (setjmp(png_jmpbuf(image->png_ptr))){
-        printf("Error: unknown\n");
-        fclose(fp);
+    if (setjmp(png_jmpbuf(png_ptr_))) {
+        png_destroy_info_struct(png_ptr_, &info_ptr_);
+        fclose(fout);
+        printf("Error: png_init_io failed.");
         exit(44);
     }
 
-    png_init_io(image->png_ptr, fp);
-    if (setjmp(png_jmpbuf(image->png_ptr))){
-        printf("Error: unknown\n");
-        fclose(fp);
-        exit(44);
-    }
-    png_set_IHDR(image->png_ptr, image->info_ptr, image->width, image->height, image->bit_depth, image->color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-    png_write_info(image->png_ptr, image->info_ptr);
-    if (setjmp(png_jmpbuf(image->png_ptr))){
-        printf("Error: unknown\n");
-        fclose(fp);
+    png_init_io(png_ptr_, fout);
+
+    if (setjmp(png_jmpbuf(png_ptr_))) {
+        png_destroy_info_struct(png_ptr_, &info_ptr_);
+        fclose(fout);
+        printf("Error: png_set_IHDR failed.");
         exit(44);
     }
 
-    png_write_image(image->png_ptr, image->row_pointers);
-    if (setjmp(png_jmpbuf(image->png_ptr))){
-        printf("Error: unknown\n");
-        fclose(fp);
+    png_set_IHDR(png_ptr_, info_ptr_, image->width, image->height, image->bit_depth, image->color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    png_write_info(png_ptr_, info_ptr_);
+
+    if (setjmp(png_jmpbuf(png_ptr_))) {
+        png_destroy_info_struct(png_ptr_, &info_ptr_);
+        fclose(fout);
+        printf("Error: png_write_image failed.");
+        exit(44);
+    }
+    png_write_image(png_ptr_, image->row_pointers);
+
+    if (setjmp(png_jmpbuf(png_ptr_))) {
+        png_destroy_info_struct(png_ptr_, &info_ptr_);
+        fclose(fout);
+        printf("Error: png_write_end failed.");
         exit(44);
     }
 
-    png_write_end(image->png_ptr, NULL);
+    png_write_end(png_ptr_, NULL);
+    
+    png_destroy_write_struct(&png_ptr_, &info_ptr_);
 
-    for (y = 0; y < image->height; y++)
-        free(image->row_pointers[y]);
-
-    free(image->row_pointers);
-    fclose(fp);
-    png_destroy_write_struct(&(image->png_ptr), &(image->info_ptr));
-
+    fclose(fout);
 }
 
 void processArguments(int argc, char *argv[], Options *options){
@@ -355,11 +348,13 @@ void processArguments(int argc, char *argv[], Options *options){
         {NULL, 0, NULL, 0}
     };
     int result = 0;
+    
     while((result = getopt_long(argc, argv, short_options, long_options, NULL)) != -1){
         switch (result)
         {
         case 'h':
-            options->help = 1;
+            printHelp();
+            exit(EXIT_SUCCESS);
             break;
         
         case 'i':
@@ -454,6 +449,11 @@ void processArguments(int argc, char *argv[], Options *options){
             break;
         }
     }
+    
+    if (!options->input_file){
+        printf("Error: No input file argument.\n");
+        exit(44);
+    }
 
     if (strcmp(options->input_file, options->output_file) == 0) {
         printf("Error: Input and output files can't have the same name.\n");
@@ -462,11 +462,6 @@ void processArguments(int argc, char *argv[], Options *options){
 
     if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate) {
         printf("Error: No function selected.\n");
-        exit(44);
-    }
-
-    if (options->help){
-        printHelp();
         exit(44);
     }
 
@@ -500,35 +495,37 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
 
+    
+
 }
 
 void process(Options *options, Png *image){
     if (options->flag_info){
         printPngInfo(image);
-        exit(44);
+        //exit(EXIT_SUCCESS);
     }
 
     if (options->flag_rect){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
-        if (!options->flag_fill || !options->flag_fill_color){
+        if ((!options->flag_fill && !options->flag_fill_color) || (options->fill_color_value && !options->flag_fill)){
             drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), NULL, NULL);
-            exit(44);
+            //exit(EXIT_SUCCESS);
         }
         else{
             drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), "fill", parseColor(options->fill_color_value));
-            exit(44);
+            //exit(EXIT_SUCCESS);
         }
     }
 
     if (options->flag_ornament){
         drawOrnament(image, options->pattern_value, parseColor(options->color_value), options->thickness_value, atoi(options->count_value));
-        exit(44);
+        //exit(EXIT_SUCCESS);
     }
 
     if (options->flag_rotate){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
         rotateImage(image, coords[0], coords[1], coords[2], coords[3], options->angle_value);
-        exit(44);
+        //exit(EXIT_SUCCESS);
     }
 }
 
@@ -583,9 +580,13 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
         
     for (int y = 0; y < copy_area->height; y++){
         for (int x = 0; x < copy_area->width; x++){
-            copy_area->row_pointers[y][x * 3 + 0] = image->row_pointers[y + y2][(x + x1) * 3 + 0];
-            copy_area->row_pointers[y][x * 3 + 1] = image->row_pointers[y + y2][(x + x1) * 3 + 1];
-            copy_area->row_pointers[y][x * 3 + 2] = image->row_pointers[y + y2][(x + x1) * 3 + 2];
+
+            int *color = getColor(image->row_pointers, x + x1, y + y2);
+            setPixel(copy_area, color, x, y);
+
+            // copy_area->row_pointers[y][x * 3 + 0] = image->row_pointers[y + y2][(x + x1) * 3 + 0];
+            // copy_area->row_pointers[y][x * 3 + 1] = image->row_pointers[y + y2][(x + x1) * 3 + 1];
+            // copy_area->row_pointers[y][x * 3 + 2] = image->row_pointers[y + y2][(x + x1) * 3 + 2];
         }
     }
 
@@ -599,10 +600,14 @@ void paste(Png *image, Png *area, int x0, int y0){
     }
 
     for (int y = 0; y < area->height; y++) {
-        for (int x = 0; x < area->width; x++) {            
-            image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
-            image->row_pointers[y + y0][(x + x0) * 3 + 1] = area->row_pointers[y][x * 3 + 1];
-            image->row_pointers[y + y0][(x + x0) * 3 + 2] = area->row_pointers[y][x * 3 + 2];
+        for (int x = 0; x < area->width; x++) {     
+            checkCoordinates(image, x + x0, y + y0);
+            int *color = getColor(area->row_pointers, x , y );
+            setPixel(image, color, x + x0, y + y0);
+
+            // image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
+            // image->row_pointers[y + y0][(x + x0) * 3 + 1] = area->row_pointers[y][x * 3 + 1];
+            // image->row_pointers[y + y0][(x + x0) * 3 + 2] = area->row_pointers[y][x * 3 + 2];
         }
     }
 }
@@ -684,7 +689,7 @@ void drawCircle(Png *image, int x1, int y1, int radius, char *thickness, int *co
     }
 
     checkThickness(thickness);
-    int circle_thickness = atoi(thickness);
+    int circle_thickness = atoi(thickness) + 1;
     int w = image->width;
     int h = image->height;
     for (int y = MAX(0, y1 - radius - circle_thickness/2); y <= MIN(h - 1, y1 + radius + circle_thickness/2); y++){
@@ -786,8 +791,8 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     drawLine(image, x1, y2, x1, y1, thickness, color);
 
     if (fill){
-        for (int x = x1 + 1; x < x2; x++){
-            for (int y = y1 - 1; y > y2; y--){
+        for (int x = x1 + atoi(thickness)/2; x < x2 - atoi(thickness)/2; x++){
+            for (int y = y1 - atoi(thickness)/2; y > y2 + atoi(thickness)/2; y--){
                 setPixel(image, fill_color, x, y);
             }
         }
@@ -819,7 +824,11 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
             y1 = h - y0 - 1;
 
             if (x0 <= x1 && y0 <= y1){
-                drawRectangle(image, x0, y0, x1, y1, thickness, color, NULL, NULL);
+                drawRectangle(image, x0, y0, x1, y1, "1", color, NULL, NULL);
+                drawRectangle(image, x0 + i_thickness - 1, y0 + i_thickness - 1, x1 - i_thickness + 1, y1 - i_thickness + 1, "1",color, NULL, NULL );
+                for (int j = 0; j < i_thickness; j++){
+                    drawRectangle(image, x0 + j, y0 + j, x1 - j, y1 - j, "1", color, NULL, NULL);
+                }
             }
         }
 
@@ -828,18 +837,40 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
         drawUCircle(image, w / 2, h / 2, radius, color);
         
     } else if (strcmp(pattern, "semicircles") == 0){
-        int h_radius = h / (2 * count);
-        int w_radius = w / (2 * count);
-        int x = w_radius, y = h_radius;
-        for (int i = 0; i < count; i++){
-            drawCircle(image, x, 0, w_radius, thickness, color, NULL, NULL);
-            drawCircle(image, x, h, w_radius, thickness, color, NULL, NULL);
-            x += 2 * w_radius;
+
+        // double width = (double)(w - count * i_thickness) / (count * 2);
+        // double height = (double)(h - count * i_thickness) / (count * 2);
+        int w_radius;
+        int h_radius;
+        if ((h / count) % 2 == 0){
+           h_radius = (h / count / 2);
         }
-        for (int j = 0; j < count; j++){
+        else{
+            h_radius = (h / count / 2) + 1;
+        }
+
+        if ((w / count) % 2 == 0){
+           w_radius = (w / count / 2);
+        }
+        else{
+            w_radius = (w / count / 2) + 1;
+        }
+
+        printf("w %d h %d\n", w, h);
+        int x = w_radius, y = h_radius;
+        for (int i = 0; i <= count; i++){
+            
+            drawCircle(image, x, 0, w_radius, thickness, color, NULL, NULL);
+            drawCircle(image, x, h - 1, w_radius, thickness, color, NULL, NULL);
+            x += 2 * w_radius;
+            
+        }
+        for (int j = 0; j <= count; j++){
+            
             drawCircle(image, 0, y, h_radius, thickness, color, NULL, NULL);
-            drawCircle(image, w, y, h_radius, thickness, color, NULL, NULL);
-            y += 2 * h_radius;
+            drawCircle(image, w - 1, y, h_radius, thickness, color, NULL, NULL);
+            y += 2 * h_radius ;
+            
         }
     }
 }
@@ -860,17 +891,14 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         printf("Error: Unexpected angle.\n");
         exit(44);
     }
-    if (x2 == x1 || y2 == y1) {
-        printf("Error: Bad rotation area.\n");
-        exit(44);
-    }
+    
 
     if (!(0 <= x2 && x2 <= image->width && 0 <= y2 && y2 <= image->height)) {
         printf("Error: Rotation area is not on image.\n");
         exit(44);
     }
        
-    Png *area_to_rotate = copy(image, x1, y1, x2, y2); 
+    Png *area_to_rotate = copy(image, MIN(x2, x1), MAX(y2, y1), MAX(x1, x2), MIN(y2, y1)); 
 
     int src_width = area_to_rotate->width;
     int src_height = area_to_rotate->height;
