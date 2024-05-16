@@ -21,14 +21,16 @@ typedef struct Png{
 typedef struct Options{
     char *input_file;
     char *output_file;
-
+    
     int help;
     int flag_info;
     int flag_input;
     int flag_output;
+
     int flag_rect;
     int flag_ornament;
     int flag_rotate;
+    
     int flag_left_up; 
     int flag_right_down; 
     int flag_color; 
@@ -143,8 +145,8 @@ void printHelp() {
     printf("  --info                    Print detailed information about the input PNG file\n");
     printf("  --input                   Input file name");
     printf("  --output                  Output file name");
-    printf("Functions for processing images:\n");
 
+    printf("Functions for processing images:\n");
     printf("  Drawing a rectangle:\n");
     printf("    --rect                  Draw a rectangle\n");
     printf("    --left_up               Coordinate of the top-left corner (format: x.y)\n");
@@ -178,7 +180,6 @@ Png *createPng(int height, int width){
     png->height = height;
     png->width = width;
     png->row_pointers = malloc(sizeof(png_bytep) * png->height);
-    
     if (!png->row_pointers){
         printf("Error: Can't allocate memory for area's row_pointers\n");
         exit(44);
@@ -197,7 +198,7 @@ Png *createPng(int height, int width){
 }
 
 void readPngFile(char *file_name, struct Png *image){
-    int x,y;
+    
     char header[8]; 
     
     FILE *fp = fopen(file_name, "rb");
@@ -248,8 +249,8 @@ void readPngFile(char *file_name, struct Png *image){
         printf("Error: Can't allocate memory for image->row_pointers\n");
         exit(44);
     }
-
-    for (y = 0; y < image->height; y++){
+    
+    for (int y = 0; y < image->height; y++){
         image->row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(image->png_ptr, image->info_ptr));
         if (!image->row_pointers[y]){
             printf("Error: can't allocate memory for pixel");
@@ -502,35 +503,34 @@ void processArguments(int argc, char *argv[], Options *options){
 void process(Options *options, Png *image){
     if (options->flag_info){
         printPngInfo(image);
-        //exit(EXIT_SUCCESS);
     }
 
     if (options->flag_rect){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
         if ((!options->flag_fill && !options->flag_fill_color) || (options->fill_color_value && !options->flag_fill)){
             drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), NULL, NULL);
-            //exit(EXIT_SUCCESS);
         }
         else{
             drawRectangle(image, coords[0], coords[1], coords[2], coords[3], options->thickness_value, parseColor(options->color_value), "fill", parseColor(options->fill_color_value));
-            //exit(EXIT_SUCCESS);
         }
     }
 
     if (options->flag_ornament){
         drawOrnament(image, options->pattern_value, parseColor(options->color_value), options->thickness_value, atoi(options->count_value));
-        //exit(EXIT_SUCCESS);
     }
 
     if (options->flag_rotate){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
         rotateImage(image, coords[0], coords[1], coords[2], coords[3], options->angle_value);
-        //exit(EXIT_SUCCESS);
     }
 }
 
 int *getColor(png_bytep *row_pointers, int x, int y){
     int *color = malloc(sizeof(int) * 3);
+    if (!color){
+        printf("Error: Can't allocate memory for color.\n");
+        exit(44);
+    }
 
     color[0] = row_pointers[y][x * 3 + 0];
     color[1] = row_pointers[y][x * 3 + 1];
@@ -583,10 +583,6 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
 
             int *color = getColor(image->row_pointers, x + x1, y + y2);
             setPixel(copy_area, color, x, y);
-
-            // copy_area->row_pointers[y][x * 3 + 0] = image->row_pointers[y + y2][(x + x1) * 3 + 0];
-            // copy_area->row_pointers[y][x * 3 + 1] = image->row_pointers[y + y2][(x + x1) * 3 + 1];
-            // copy_area->row_pointers[y][x * 3 + 2] = image->row_pointers[y + y2][(x + x1) * 3 + 2];
         }
     }
 
@@ -604,12 +600,9 @@ void paste(Png *image, Png *area, int x0, int y0){
             checkCoordinates(image, x + x0, y + y0);
             int *color = getColor(area->row_pointers, x , y );
             setPixel(image, color, x + x0, y + y0);
-
-            // image->row_pointers[y + y0][(x + x0) * 3 + 0] = area->row_pointers[y][x * 3 + 0];
-            // image->row_pointers[y + y0][(x + x0) * 3 + 1] = area->row_pointers[y][x * 3 + 1];
-            // image->row_pointers[y + y0][(x + x0) * 3 + 2] = area->row_pointers[y][x * 3 + 2];
         }
     }
+
 }
 
 void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
@@ -622,16 +615,14 @@ void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
     int x = 0;
     int y = radius;
     while (x <= y) {
-        setPixel(image, color, x+x0, y+y0);
-        setPixel(image, color, y+x0, x+y0);
-        setPixel(image, color, -y+x0, x+y0);
-        setPixel(image, color, -x+x0, y+y0);
-        setPixel(image, color, -x+x0, -y+y0);
-        setPixel(image, color, -y+x0, -x+y0);
-        setPixel(image, color, y+x0, -x+y0);
-        setPixel(image, color, x+x0, -y+y0);
-
-        //D += D < 0 ? 4 * x + 6 : 4 * (x - y--) + 10;
+        setPixel(image, color, x + x0, y + y0);
+        setPixel(image, color, y + x0, x + y0);
+        setPixel(image, color, -y + x0, x + y0);
+        setPixel(image, color, -x + x0, y + y0);
+        setPixel(image, color, -x + x0, -y + y0);
+        setPixel(image, color, -y + x0, -x + y0);
+        setPixel(image, color, y + x0, -x + y0);
+        setPixel(image, color, x + x0, -y + y0);
         
         if (delta < 0) {
             delta += 4 * x + 6;
@@ -642,6 +633,7 @@ void drawSimpleCircle(Png *image,int x0, int y0, int radius, int *color){
             y--;
         }
     }
+
 }
 
 int checkCoordinates(Png *image, int x, int y){
@@ -662,8 +654,8 @@ int checkInCircle(int x, int y, int x0, int y0, int radius, int thickness){
 }
 
 int checkOnCircleLine(int x, int y, int x0, int y0, int radius, int thickness){
-    int flag1 = (x-x0)*(x-x0) + (y-y0)*(y-y0) <= (radius+thickness/2)*(radius+thickness/2);
-    int flag2 = (x-x0)*(x-x0) + (y-y0)*(y-y0) >= (MAX(0, radius-thickness/2))*(MAX(0, radius-thickness/2));
+    int flag1 = (x - x0) * (x - x0) + (y - y0) * (y - y0) <= (radius + thickness/2) * (radius + thickness/2);
+    int flag2 = (x - x0) * (x - x0) + (y - y0) * (y - y0) >= (MAX(0, radius - thickness/2))*(MAX(0, radius - thickness/2));
     return flag1 && flag2;
 }
 
@@ -717,6 +709,7 @@ void drawUCircle(Png *image, int x1, int y1, int radius, int *color){
 
     int w = image->width;
     int h = image->height;
+
     for (int y = 0; y <= h; y++){
         for (int x = 0; x <= w; x++){
             if (!checkOnCircleLine(x, y, x1, y1, radius, 1) && !checkInCircle(x, y, x1, y1, radius, 1)){
@@ -773,30 +766,24 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     
     checkThickness(thickness);
 
-    if (y1 < y2){
-        int t = y2;
-        y2 = y1;
-        y1 = t;
-    }
+    int cr_x1 = MIN(x2, x1);
+    int cr_y1 = MIN(y2, y1);
+    int cr_x2 = MAX(x2, x1);
+    int cr_y2 = MAX(y2, y1);
 
-    if (x2 < x1){
-        int tp = x1;
-        x1 = x2;
-        x2 = tp;
-    }
-
-    drawLine(image, x1, y1, x2, y1, thickness, color);
-    drawLine(image, x1, y2, x2, y2, thickness, color);
-    drawLine(image, x2, y2, x2, y1, thickness, color);
-    drawLine(image, x1, y2, x1, y1, thickness, color);
+    drawLine(image, cr_x1, cr_y1, cr_x2, cr_y1, thickness, color);
+    drawLine(image, cr_x1, cr_y2, cr_x2, cr_y2, thickness, color);
+    drawLine(image, cr_x2, cr_y2, cr_x2, cr_y1, thickness, color);
+    drawLine(image, cr_x1, cr_y2, cr_x1, cr_y1, thickness, color);
 
     if (fill){
-        for (int x = x1 + atoi(thickness)/2; x < x2 - atoi(thickness)/2; x++){
-            for (int y = y1 - atoi(thickness)/2; y > y2 + atoi(thickness)/2; y--){
+        for (int x = cr_x1 + atoi(thickness)/2; x < cr_x2 - atoi(thickness)/2; x++){
+            for (int y = cr_y1 - atoi(thickness)/2; y > cr_y2 + atoi(thickness)/2; y--){
                 setPixel(image, fill_color, x, y);
             }
         }
     }
+
 }
 
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count){
@@ -837,9 +824,6 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
         drawUCircle(image, w / 2, h / 2, radius, color);
         
     } else if (strcmp(pattern, "semicircles") == 0){
-
-        // double width = (double)(w - count * i_thickness) / (count * 2);
-        // double height = (double)(h - count * i_thickness) / (count * 2);
         int w_radius;
         int h_radius;
         if ((h / count) % 2 == 0){
@@ -856,17 +840,14 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
             w_radius = (w / count / 2) + 1;
         }
 
-        printf("w %d h %d\n", w, h);
         int x = w_radius, y = h_radius;
         for (int i = 0; i <= count; i++){
-            
             drawCircle(image, x, 0, w_radius, thickness, color, NULL, NULL);
             drawCircle(image, x, h - 1, w_radius, thickness, color, NULL, NULL);
             x += 2 * w_radius;
             
         }
         for (int j = 0; j <= count; j++){
-            
             drawCircle(image, 0, y, h_radius, thickness, color, NULL, NULL);
             drawCircle(image, w - 1, y, h_radius, thickness, color, NULL, NULL);
             y += 2 * h_radius ;
