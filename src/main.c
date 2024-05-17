@@ -27,6 +27,7 @@ typedef struct Options{
     int flag_input;
     int flag_output;
 
+    int flag_outside_ornament;
     int flag_rect;
     int flag_ornament;
     int flag_rotate;
@@ -45,7 +46,6 @@ typedef struct Options{
     char *right_down_value;
     char *color_value;
     char *thickness_value;
-    char *fill_value;
     char *fill_color_value;
     char *pattern_value;
     char *count_value;
@@ -79,6 +79,8 @@ void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color);
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count);
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
+void resize(Png **image, int h, int w, int x, int y);
+void drawOutsideOrnament(Png *image, char *thickness, int *color);
 
 
 int main(int argc, char *argv[]){
@@ -346,6 +348,7 @@ void processArguments(int argc, char *argv[], Options *options){
         {"rotate", no_argument, NULL, 266},
         {"angle", required_argument, NULL, 267},
         {"info", no_argument, NULL, 268},
+        {"outside_ornament", no_argument, NULL, 269},
         {NULL, 0, NULL, 0}
     };
     int result = 0;
@@ -443,6 +446,10 @@ void processArguments(int argc, char *argv[], Options *options){
             }
             options->flag_info = 1;
 
+        case 269:
+            options->flag_outside_ornament = 1;
+            break;
+
 
         default:
             printf("Error: Unknown option or missing argument\n");
@@ -461,7 +468,7 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
 
-    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate) {
+    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate && !options->flag_outside_ornament) {
         printf("Error: No function selected.\n");
         exit(44);
     }
@@ -523,6 +530,10 @@ void process(Options *options, Png *image){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
         rotateImage(image, coords[0], coords[1], coords[2], coords[3], options->angle_value);
     }
+
+    if (options->flag_outside_ornament){
+        drawOutsideOrnament(image, options->thickness_value, parseColor(options->color_value));
+    }
 }
 
 int *getColor(png_bytep *row_pointers, int x, int y){
@@ -581,7 +592,7 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
     for (int y = 0; y < copy_area->height; y++){
         for (int x = 0; x < copy_area->width; x++){
 
-            int *color = getColor(image->row_pointers, x + x1, y + y2);
+            int *color = getColor(image->row_pointers, x + x1, y + y1);
             setPixel(copy_area, color, x, y);
         }
     }
@@ -767,9 +778,9 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     checkThickness(thickness);
 
     int cr_x1 = MIN(x2, x1);
-    int cr_y1 = MIN(y2, y1);
+    int cr_y2 = MIN(y2, y1);
     int cr_x2 = MAX(x2, x1);
-    int cr_y2 = MAX(y2, y1);
+    int cr_y1 = MAX(y2, y1);
 
     drawLine(image, cr_x1, cr_y1, cr_x2, cr_y1, thickness, color);
     drawLine(image, cr_x1, cr_y2, cr_x2, cr_y2, thickness, color);
@@ -879,7 +890,7 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         exit(44);
     }
        
-    Png *area_to_rotate = copy(image, MIN(x2, x1), MAX(y2, y1), MAX(x1, x2), MIN(y2, y1)); 
+    Png *area_to_rotate = copy(image, MIN(x2, x1), MIN(y2, y1), MAX(x1, x2), MAX(y2, y1)); 
 
     int src_width = area_to_rotate->width;
     int src_height = area_to_rotate->height;
@@ -911,4 +922,18 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int paste_y = (cr_y1 + cr_y0) / 2 - area_to_rotate->height / 2;
 
     paste(image, area_to_rotate, paste_x, paste_y);
+}
+
+void resize(Png **image, int h, int w, int x, int y){
+    Png *res = createPng(h, w);
+    Png *copy_ = copy(*image, 0, 0, (*image)->width, (*image)->height);
+    paste(res, copy_, x, y);
+    (*image) = res;
+}
+
+void drawOutsideOrnament(Png *image, char *thickness, int *color){
+    int i_thickness = atoi(thickness);
+    int w = i_thickness * 2 + image->width;
+    int h = i_thickness * 2 + image->height;
+    resize(&image, w, h, i_thickness, i_thickness);
 }
