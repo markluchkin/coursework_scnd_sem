@@ -79,7 +79,7 @@ void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color);
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count);
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
-void resize(Png **image, int h, int w, int x, int y);
+void resize(Png *image, int h, int w, int x, int y);
 void drawOutsideOrnament(Png *image, char *thickness, int *color);
 
 
@@ -924,16 +924,25 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     paste(image, area_to_rotate, paste_x, paste_y);
 }
 
-void resize(Png **image, int h, int w, int x, int y){
-    Png *res = createPng(h, w);
-    Png *copy_ = copy(*image, 0, 0, (*image)->width, (*image)->height);
-    paste(res, copy_, x, y);
-    (*image) = res;
+void resize(Png *image, int h, int w, int x, int y){
+    Png *copy_ = copy(image, 0, 0, (image)->width, (image)->height);
+    
+    image->height = h;
+    image->width = w;
+    image->row_pointers = malloc(sizeof(png_bytep) * image->height);
+    for (int y = 0; y < image->height; y++) {
+        image->row_pointers[y] = malloc(sizeof(png_byte) * image->width * 3);
+    }
+
+    paste(image, copy_, x, y);
+
 }
 
 void drawOutsideOrnament(Png *image, char *thickness, int *color){
     int i_thickness = atoi(thickness);
-    int w = i_thickness * 2 + image->width;
-    int h = i_thickness * 2 + image->height;
-    resize(&image, w, h, i_thickness, i_thickness);
+
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+
+    resize(image, i_thickness * 2 + image->height, i_thickness * 2 + image->width, i_thickness, i_thickness);
+    
 }
