@@ -27,6 +27,8 @@ typedef struct Options{
     int flag_input;
     int flag_output;
 
+    int flag_shift;
+    int flag_binarization;
     int flag_outside_ornament;
     int flag_rect;
     int flag_ornament;
@@ -42,6 +44,9 @@ typedef struct Options{
     int flag_count;
     int flag_angle;
 
+    char *axis;
+    char *threshold;
+    char *step;
     char *left_up_value;
     char *right_down_value;
     char *color_value;
@@ -81,6 +86,8 @@ void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int co
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
 void resize(Png *image, int h, int w, int x, int y);
 void drawOutsideOrnament(Png *image, char *thickness, int *color);
+void shift(Png *image, char *axis, int step);
+void binarization(Png *image, int threshold);
 
 
 int main(int argc, char *argv[]){
@@ -349,6 +356,11 @@ void processArguments(int argc, char *argv[], Options *options){
         {"angle", required_argument, NULL, 267},
         {"info", no_argument, NULL, 268},
         {"outside_ornament", no_argument, NULL, 269},
+        {"binarization", no_argument, NULL, 270},
+        {"shift", no_argument, NULL, 271},
+        {"axis", required_argument, NULL, 272}, 
+        {"step", required_argument, NULL, 273}, 
+        {"threshold", required_argument, NULL, 274},
         {NULL, 0, NULL, 0}
     };
     int result = 0;
@@ -450,6 +462,25 @@ void processArguments(int argc, char *argv[], Options *options){
             options->flag_outside_ornament = 1;
             break;
 
+        case 270:
+            options->flag_binarization = 1;
+            break;
+
+        case 271:
+            options->flag_shift = 1;
+            break;
+
+        case 272:
+            options->axis = optarg;
+            break;
+
+        case 273:
+            options->step = optarg;
+            break;
+
+        case 274:
+            options->threshold = optarg;
+            break;
 
         default:
             printf("Error: Unknown option or missing argument\n");
@@ -468,7 +499,7 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
 
-    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate && !options->flag_outside_ornament) {
+    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate && !options->flag_outside_ornament && !options->flag_binarization && !options->flag_shift) {
         printf("Error: No function selected.\n");
         exit(44);
     }
@@ -533,6 +564,14 @@ void process(Options *options, Png *image){
 
     if (options->flag_outside_ornament){
         drawOutsideOrnament(image, options->thickness_value, parseColor(options->color_value));
+    }
+
+    if (options->flag_binarization){
+        binarization(image, atoi(options->threshold));
+    }
+
+    if (options->flag_shift){
+        shift(image, options->axis, atoi(options->step));
     }
 }
 
@@ -945,4 +984,75 @@ void drawOutsideOrnament(Png *image, char *thickness, int *color){
 
     resize(image, i_thickness * 2 + image->height, i_thickness * 2 + image->width, i_thickness, i_thickness);
     
+}
+
+void shift(Png *image, char *axis, int step){
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+
+    if (strcmp(axis, "x") == 0){
+        for (int y = 0; y < image->height; y++){
+            for (int x = 0; x < image->width - step; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x + step, y);
+            }
+        }
+        for (int y = 0; y < image->height; y++){
+            for (int x = image->width - step; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x - (image->width - step), y);
+            }
+        }
+    }
+
+    if (strcmp(axis, "y") == 0){
+        for (int y = 0; y < image->height - step; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x, y + step);
+            }
+        }
+        for (int y = image->height - step; y < image->height; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x , y - image->height + step);
+            }
+        }
+    }
+
+    if (strcmp(axis, "xy") == 0){
+        for (int y = 0; y < image->height; y++){
+            for (int x = 0; x < image->width - step; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x + step, y);
+            }
+        }
+        for (int y = 0; y < image->height; y++){
+            for (int x = image->width - step; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x - (image->width - step), y);
+            }
+        }
+        Png *copy_ = copy(image, 0, 0, image->width, image->height);
+        for (int y = 0; y < image->height - step; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x, y + step);
+            }
+        }
+        for (int y = image->height - step; y < image->height; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x , y - image->height + step);
+            }
+        }
+    }
+}
+
+void binarization(Png *image, int threshold){
+    int sum;
+    int *black = parseColor("0.0.0");
+    int *white = parseColor("255.255.255");
+    for (int y = 0; y < image->height; y++){
+        for (int x = 0; x < image->width; x++){
+            int *color = getColor(image->row_pointers, x, y);
+            sum = color[0] + color[1] + color[2];
+            if (sum <= threshold){
+                setPixel(image, black, x, y);
+            } else{
+                setPixel(image, white, x, y);
+            }
+        }
+    }
 }
