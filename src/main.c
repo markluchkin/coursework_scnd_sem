@@ -21,15 +21,25 @@ typedef struct Png{
 typedef struct Options{
     char *input_file;
     char *output_file;
+    char *input_file_;
     
     int help;
     int flag_info;
     int flag_input;
     int flag_output;
 
+    int flag_blur;
+    int flag_contrast;
+    int flag_reds;
+    int flag_square_rhombus;
+    int flag_rhombus;
+    int flag_shift;
+    int flag_binarization;
+    int flag_outside_ornament;
     int flag_rect;
     int flag_ornament;
     int flag_rotate;
+    int flag_merge;
     
     int flag_left_up; 
     int flag_right_down; 
@@ -40,12 +50,17 @@ typedef struct Options{
     int flag_pattern;
     int flag_count;
     int flag_angle;
-
+    char *alpha;
+    char *beta;
+    char *upper_vertex;
+    char *size;
+    char *axis;
+    char *threshold;
+    char *step;
     char *left_up_value;
     char *right_down_value;
     char *color_value;
     char *thickness_value;
-    char *fill_value;
     char *fill_color_value;
     char *pattern_value;
     char *count_value;
@@ -61,7 +76,7 @@ Png *createPng(int height, int width);
 void readPngFile(char *file_name, struct Png *image);
 void writePngFile(char *file_name, struct Png *image);
 void processArguments(int argc, char *argv[], Options *options);
-void process(Options *options, Png *image);
+void process(Options *options, Png *image, Png *image_);
 int *getColor(png_bytep *row_pointers, int x, int y);
 int *parseColor(char *color);
 int *parseCoordinates(char *left_up, char *right_down);
@@ -79,18 +94,27 @@ void drawLine(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *
 void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, int *color, char *fill, int *fill_color);
 void drawOrnament(Png *image, char *pattern, int *color, char *thickness, int count);
 void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle);
-
+void resize(Png *image, int h, int w, int x, int y);
+void drawOutsideOrnament(Png *image, char *thickness, int *color);
+void shift(Png *image, char *axis, int step);
+void binarization(Png *image, int threshold);
+void merge(Png *image, Png *image_);
+void drawRhombus(Png *image, int *color);
+void drawSquareRhombus(Png *image, int x0, int y0, int size, int *color);
+void reds(Png *image);
+void contrast(Png *image, float alpha, int beta);
+void blur(Png *image, int size);
 
 int main(int argc, char *argv[]){
     Png image;
-    
+    Png image_;
     Options options = {NULL};
     options.output_file = "out.png";
     processArguments(argc, argv, &options);
     
     readPngFile(options.input_file, &image);
     
-    process(&options, &image);
+    process(&options, &image, &image_);
     
     writePngFile(options.output_file, &image);
     
@@ -346,6 +370,23 @@ void processArguments(int argc, char *argv[], Options *options){
         {"rotate", no_argument, NULL, 266},
         {"angle", required_argument, NULL, 267},
         {"info", no_argument, NULL, 268},
+        {"outside_ornament", no_argument, NULL, 269},
+        {"binarization", no_argument, NULL, 270},
+        {"shift", no_argument, NULL, 271},
+        {"axis", required_argument, NULL, 272}, 
+        {"step", required_argument, NULL, 273}, 
+        {"threshold", required_argument, NULL, 274},
+        {"merge", no_argument, NULL, 275},
+        {"input2", required_argument, NULL, 276},
+        {"rhombus", no_argument, NULL, 277},
+        {"square_rhombus", no_argument, NULL, 278},
+        {"size", required_argument, NULL, 279},
+        {"upper_vertex", required_argument, NULL, 280},
+        {"reds", no_argument, NULL, 281},
+        {"contrast", no_argument, NULL, 282},
+        {"alpha", required_argument, NULL, 283},
+        {"beta", required_argument, NULL, 284},
+        {"blur", no_argument, NULL, 285},
         {NULL, 0, NULL, 0}
     };
     int result = 0;
@@ -443,6 +484,73 @@ void processArguments(int argc, char *argv[], Options *options){
             }
             options->flag_info = 1;
 
+        case 269:
+            options->flag_outside_ornament = 1;
+            break;
+
+        case 270:
+            options->flag_binarization = 1;
+            break;
+
+        case 271:
+            options->flag_shift = 1;
+            break;
+
+        case 272:
+            options->axis = optarg;
+            break;
+
+        case 273:
+            options->step = optarg;
+            break;
+
+        case 274:
+            options->threshold = optarg;
+            break;
+
+        case 275:
+            options->flag_merge = 1;
+            break;
+
+        case 276:
+            options->input_file_ = optarg;
+            break;
+
+        case 277:
+            options->flag_rhombus = 1;
+            break;
+
+        case 278:
+            options->flag_square_rhombus = 1;
+            break;
+
+        case 279:
+            options->size = optarg;
+            break;
+
+        case 280:
+            options->upper_vertex = optarg;
+            break;
+
+        case 281:
+            options->flag_reds = 1;
+            break;
+
+        case 282:
+            options->flag_contrast = 1;
+            break;
+
+        case 283:
+            options->alpha = optarg;
+            break;
+
+        case 284:
+            options->beta = optarg;
+            break;
+
+        case 285:
+            options->flag_blur = 1;
+            break;
 
         default:
             printf("Error: Unknown option or missing argument\n");
@@ -461,7 +569,7 @@ void processArguments(int argc, char *argv[], Options *options){
         exit(44);
     }
 
-    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate) {
+    if (!options->flag_info && !options->help && !options->flag_rect && !options->flag_ornament && !options->flag_rotate && !options->flag_outside_ornament && !options->flag_binarization && !options->flag_shift && !options->flag_merge && !options->flag_rhombus && !options->flag_square_rhombus && !options->flag_reds && !options->flag_contrast && !options->flag_blur) {
         printf("Error: No function selected.\n");
         exit(44);
     }
@@ -494,13 +602,11 @@ void processArguments(int argc, char *argv[], Options *options){
     if (options->flag_rotate && (!options->flag_angle || !options->flag_left_up || !options->flag_right_down)){
         printf("Error: Missing required argument.\n");
         exit(44);
-    }
-
-    
+    }  
 
 }
 
-void process(Options *options, Png *image){
+void process(Options *options, Png *image, Png *image_){
     if (options->flag_info){
         printPngInfo(image);
     }
@@ -522,6 +628,44 @@ void process(Options *options, Png *image){
     if (options->flag_rotate){
         int *coords = parseCoordinates(options->left_up_value, options->right_down_value);
         rotateImage(image, coords[0], coords[1], coords[2], coords[3], options->angle_value);
+    }
+
+    if (options->flag_outside_ornament){
+        drawOutsideOrnament(image, options->thickness_value, parseColor(options->color_value));
+    }
+
+    if (options->flag_binarization){
+        binarization(image, atoi(options->threshold));
+    }
+
+    if (options->flag_shift){
+        shift(image, options->axis, atoi(options->step));
+    }
+
+    if (options->flag_merge){
+        readPngFile(options->input_file_, image_);
+        merge(image, image_);
+    }
+
+    if (options->flag_rhombus){
+        drawRhombus(image, parseColor(options->color_value));
+    }
+
+    if (options->flag_square_rhombus){
+        int *coords = parseCoordinates(options->upper_vertex, "0.0");
+        drawSquareRhombus(image, coords[0], coords[1], atoi(options->size), parseColor(options->color_value));
+    }
+
+    if (options->flag_reds){
+        reds(image);
+    }
+
+    if (options->flag_contrast){
+        contrast(image, atof(options->alpha), atoi(options->beta));
+    }
+
+    if (options->flag_blur){
+        blur(image, atoi(options->size));
     }
 }
 
@@ -581,7 +725,7 @@ Png *copy(Png *image, int x1, int y1, int x2, int y2){
     for (int y = 0; y < copy_area->height; y++){
         for (int x = 0; x < copy_area->width; x++){
 
-            int *color = getColor(image->row_pointers, x + x1, y + y2);
+            int *color = getColor(image->row_pointers, x + x1, y + y1);
             setPixel(copy_area, color, x, y);
         }
     }
@@ -767,9 +911,9 @@ void drawRectangle(Png *image, int x1, int y1, int x2, int y2, char *thickness, 
     checkThickness(thickness);
 
     int cr_x1 = MIN(x2, x1);
-    int cr_y1 = MIN(y2, y1);
+    int cr_y2 = MIN(y2, y1);
     int cr_x2 = MAX(x2, x1);
-    int cr_y2 = MAX(y2, y1);
+    int cr_y1 = MAX(y2, y1);
 
     drawLine(image, cr_x1, cr_y1, cr_x2, cr_y1, thickness, color);
     drawLine(image, cr_x1, cr_y2, cr_x2, cr_y2, thickness, color);
@@ -879,7 +1023,7 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
         exit(44);
     }
        
-    Png *area_to_rotate = copy(image, MIN(x2, x1), MAX(y2, y1), MAX(x1, x2), MIN(y2, y1)); 
+    Png *area_to_rotate = copy(image, MIN(x2, x1), MIN(y2, y1), MAX(x1, x2), MAX(y2, y1)); 
 
     int src_width = area_to_rotate->width;
     int src_height = area_to_rotate->height;
@@ -911,4 +1055,234 @@ void rotateImage(Png *image, int x1, int y1, int x2, int y2, char *angle){
     int paste_y = (cr_y1 + cr_y0) / 2 - area_to_rotate->height / 2;
 
     paste(image, area_to_rotate, paste_x, paste_y);
+}
+
+void resize(Png *image, int h, int w, int x, int y){
+    Png *copy_ = copy(image, 0, 0, (image)->width, (image)->height);
+    
+    image->height = h;
+    image->width = w;
+    image->row_pointers = malloc(sizeof(png_bytep) * image->height);
+    for (int y = 0; y < image->height; y++) {
+        image->row_pointers[y] = malloc(sizeof(png_byte) * image->width * 3);
+    }
+
+    paste(image, copy_, x, y);
+
+}
+
+void drawOutsideOrnament(Png *image, char *thickness, int *color){
+    int i_thickness = atoi(thickness);
+
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+
+    resize(image, i_thickness * 2 + image->height, i_thickness * 2 + image->width, i_thickness, i_thickness);
+    
+}
+
+void shift(Png *image, char *axis, int step){
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+
+    if (strcmp(axis, "x") == 0){
+        for (int y = 0; y < image->height; y++){
+            for (int x = 0; x < image->width - step; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x + step, y);
+            }
+        }
+        for (int y = 0; y < image->height; y++){
+            for (int x = image->width - step; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x - (image->width - step), y);
+            }
+        }
+    }
+
+    if (strcmp(axis, "y") == 0){
+        for (int y = 0; y < image->height - step; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x, y + step);
+            }
+        }
+        for (int y = image->height - step; y < image->height; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x , y - image->height + step);
+            }
+        }
+    }
+
+    if (strcmp(axis, "xy") == 0){
+        for (int y = 0; y < image->height; y++){
+            for (int x = 0; x < image->width - step; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x + step, y);
+            }
+        }
+        for (int y = 0; y < image->height; y++){
+            for (int x = image->width - step; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x - (image->width - step), y);
+            }
+        }
+        Png *copy_ = copy(image, 0, 0, image->width, image->height);
+        for (int y = 0; y < image->height - step; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x, y + step);
+            }
+        }
+        for (int y = image->height - step; y < image->height; y++){
+            for (int x = 0; x < image->width; x++){
+                setPixel(image, getColor(copy_->row_pointers, x, y), x , y - image->height + step);
+            }
+        }
+    }
+}
+
+void binarization(Png *image, int threshold){
+    int sum;
+    int *black = parseColor("0.0.0");
+    int *white = parseColor("255.255.255");
+    for (int y = 0; y < image->height; y++){
+        for (int x = 0; x < image->width; x++){
+            int *color = getColor(image->row_pointers, x, y);
+            sum = color[0] + color[1] + color[2];
+            if (sum <= threshold){
+                setPixel(image, black, x, y);
+            } else{
+                setPixel(image, white, x, y);
+            }
+        }
+    }
+}
+
+void merge(Png *image, Png *image_){
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+    //printf("%d %d %d %d", image->height, image_->height, image->width, image_->width);
+    resize(image, MAX(image->height, image_->height), image->width + image_->width, 0, 0);
+    paste(image, image_, image->width + 1, 0);
+    setPixel(image, parseColor("255.255.25"), image->width + 100, 100);
+}
+
+float area(int x1, int y1, int x2, int y2, int x3, int y3){
+   return abs((x1*(y2-y3) + x2*(y3-y1)+ x3*(y1-y2))/2.0);
+}
+
+int isInTriangle(int x1, int x2, int x3, int y1, int y2, int y3, int x, int y){
+    float A = area (x1, y1, x2, y2, x3, y3);
+   float A1 = area (x, y, x2, y2, x3, y3);
+   float A2 = area (x1, y1, x, y, x3, y3);
+   float A3 = area (x1, y1, x2, y2, x, y);
+   return (A == A1 + A2 + A3);
+}
+
+void drawRhombus(Png *image, int *color){
+    int x1 = 0;
+    int y1 = 0;
+    int x2 = image->width;
+    int y2 = image->height;
+
+    drawLine(image, x1, y2 / 2, x2 / 2, y1, "1", color);
+    drawLine(image, x1, y2 / 2, x2 / 2, y2, "1", color);
+
+    drawLine(image, x2 / 2, y1, x2, y2 / 2, "1", color);
+    drawLine(image, x2 / 2, y2, x2, y2 / 2, "1", color);
+
+    for (int y = 0; y < y2; y++){
+        for (int x = 0; x < x2; x++){
+            if (isInTriangle(x1, x2 / 2, x2, y2 / 2, y1, y2 / 2, x, y) || isInTriangle(x1, x2 / 2, x2, y2 / 2, y2, y2 / 2, x, y)){
+                setPixel(image, color, x, y);
+            }
+        }
+    }
+}
+
+void drawSquareRhombus(Png *image, int x0, int y0, int size, int *color){
+    int d = sqrt(size*size + size*size);
+    int rx = x0;
+    int ry = y0 + d/2;
+    while (d >= 0){
+        for (int y = 0; y < image->height; y++){
+            for (int x = 0; x < image->width; x++){
+                if (abs(x-rx) + abs(y-ry) == d/2){
+                    setPixel(image, color, x, y);
+                }
+            }
+        }
+        d--;
+    } 
+}
+
+void reds(Png *image){
+    
+    int red[3] = {255, 0, 0};
+    int black[3] = {0, 0, 0};
+
+    //drawCircle(image, 100, 100, 20, "1", red, NULL, NULL);
+    Png *copy_ = copy(image, 0, 0, image->width, image->height);
+    for (int y = 0; y < image->height; y++){
+        for (int x = 0; x < image->width; x++){
+            int *color = getColor(copy_->row_pointers, x, y);
+            if (color[0] == 255 && color[1] ==255 && color[2] == 255){
+                drawRectangle(image, x - 2, y - 2, x + 2, y + 2, "1", black, NULL, NULL);
+            }
+        }
+    }
+}
+
+void contrast(Png *image, float alpha, int beta){
+    int r, g, b;
+    for (int y = 0; y < image->height; y++){
+        for (int x = 0; x < image->width; x++){
+            int *color = getColor(image->row_pointers, x, y);
+
+            r = round(alpha * (float)color[0] + beta);
+            g = round(alpha * (float)color[1] + beta);
+            b = round(alpha * (float)color[2] + beta);
+
+            r = (r < 0) ? 0 : ( (r > 255) ? 255 : r );
+            g = (g < 0) ? 0 : ( (g > 255) ? 255 : g );
+            b = (b < 0) ? 0 : ( (b > 255) ? 255 : b );
+
+            color[0] = r;
+            color[1] = g;
+            color[2] = b;
+
+            setPixel(image, color, x, y);
+        }
+    }
+    
+}
+
+void blur(Png *image, int size){
+    int s = size;
+    if (size % 2 == 0){
+        s++;
+    }
+    int sumR, sumG, sumB;
+    for (int y = 0; y < image->height; y += s){
+        for (int x = 0; x < image->width; x += s){
+            int *color = getColor(image->row_pointers, x, y);
+            
+
+            for (int y_ = 0; y_ < s; y_++){
+                for (int x_ = 0; x_ < s; x_++){
+                    if (!checkCoordinates(image, x_ + x, y_ + y)){
+                        continue;
+                    }
+                    int *color_ = getColor(image->row_pointers, x_ + x, y_ + y);
+                    sumR += color_[0];
+                    sumG += color_[1];
+                    sumB += color_[2];
+                }
+
+            }
+            
+            color[0] = sumR / (s*s);
+            color[1] = sumG / (s*s);
+            color[2] = sumB / (s*s);
+            setPixel(image, color, x + s/2, y + s/2);
+
+            sumR = 0;
+            sumG = 0;
+            sumB = 0;
+        }
+
+    }
+    
 }
